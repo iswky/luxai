@@ -1,0 +1,29 @@
+{% extends 'webui/base.html' %}
+
+{% block title %}Файлы{% endblock %}
+
+{% block content %}
+<h2>Файлы в системе</h2>
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>Название файла</th>
+            <th>Источник</th>
+            <th>Статус</th>
+            <th>Уверенность</th>
+            <th>Комментарий</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for file in files %}
+        <tr>
+            <td>{{ file.name }}</td>
+            <td>{{ file.source }}</td>
+            <td>{{ file.status }}</td>
+            <td>{{ file.confidence }}</td>
+            <td>{{ file.comment }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
