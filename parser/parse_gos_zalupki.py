@@ -19,6 +19,8 @@ except ImportError as e:
 class TenderParser:
     """Парсер тендеров с расширенными данными"""
     
+    _red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+
     def __init__(self, excel_file='tenders.xlsx'):
         self.excel_file = excel_file
         self.csv_file = excel_file.replace('.xlsx', '.csv')
@@ -93,7 +95,7 @@ class TenderParser:
                 ws.title = "Тендеры"
                 # Расширенные заголовки с заказчиком
                 headers = ['Номер тендера', 'Название/Объект закупки', 'Ссылка', 
-                          'Цена (руб)', 'ФЗ', 'Окончание подачи заявок', 'Заказчик', 'Дата добавления']
+                          'Цена (руб)', 'ФЗ', 'Окончание подачи заявок', 'Заказчик', 'Дата добавления', 'Файлы скачаны']
                 ws.append(headers)
                 
                 header_font = Font(bold=True, size=11, color="FFFFFF")
@@ -104,7 +106,7 @@ class TenderParser:
                     cell.fill = header_fill
                     cell.alignment = Alignment(horizontal="center")
                 
-                ws.column_dimensions['A'].width = 25
+                ws.column_dimensions['A'].width = 50
                 ws.column_dimensions['B'].width = 70
                 ws.column_dimensions['C'].width = 60
                 ws.column_dimensions['D'].width = 18
@@ -112,6 +114,7 @@ class TenderParser:
                 ws.column_dimensions['F'].width = 20
                 ws.column_dimensions['G'].width = 50
                 ws.column_dimensions['H'].width = 20
+                ws.column_dimensions['I'].width = 30
             
             next_row = ws.max_row + 1
             for number, info in new_tenders.items():
@@ -123,6 +126,9 @@ class TenderParser:
                 ws.cell(row=next_row, column=6, value=info.get('end_date', 'Не указана'))
                 ws.cell(row=next_row, column=7, value=info.get('customer', 'Не указан'))
                 ws.cell(row=next_row, column=8, value=info['first_seen'])
+                ws.cell(row=next_row, column=9, value='False')
+                ws.cell(row=next_row, column=9, value='False').fill = self._red_fill
+                
                 next_row += 1
             
             wb.save(self.excel_file)
