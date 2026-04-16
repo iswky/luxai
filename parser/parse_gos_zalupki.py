@@ -19,7 +19,7 @@ except ImportError as e:
 class TenderParser:
     """Парсер тендеров с расширенными данными"""
     
-    _red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+    red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
 
     def __init__(self, excel_file='tenders.xlsx'):
         self.excel_file = excel_file
@@ -48,6 +48,9 @@ class TenderParser:
             'okpd2IdsCodes': '63,61.1,26.3,27,32.9,61.9,61.3,26.5,26.6,26.2,61.2,62,28,26,26.1,26.7,26.8'
         }
         
+        # Загружаем существующие номера при запуске (один раз)
+        self.existing_numbers = self.load_existing_tenders()
+        
         print("\n" + "="*60)
         print("🎯 ПАРСЕР ЗАПУЩЕН")
         print("="*60)
@@ -69,23 +72,37 @@ class TenderParser:
             except Exception as e:
                 print(f"Ошибка при загрузке: {e}")
         else:
-            print("📂 Файл не найден или пуст")
+            print("📂 Файл не найден или пуст. Будут добавлены все тендеры.")
         
         return existing_numbers
     
     def save_tenders(self, new_tenders):
-        """Сохраняет новые тендеры"""
+        """Сохраняет новые тендеры (только те, которых еще нет)"""
         if not new_tenders:
             return 0
         
+        # Фильтруем только новые тендеры
+        truly_new = {}
+        for number, info in new_tenders.items():
+            if number not in self.existing_numbers:
+                truly_new[number] = info
+                self.existing_numbers.add(number)  # Добавляем в кэш
+        
+        if not truly_new:
+            print(f"⏭️ Нет новых тендеров для сохранения")
+            return 0
+        
         if OPENPYXL_AVAILABLE:
-            return self._append_to_excel(new_tenders)
+            result = self._append_to_excel(truly_new)
         else:
-            return self._append_to_csv(new_tenders)
+            result = self._append_to_csv(truly_new)
+        
+        return result
     
     def _append_to_excel(self, new_tenders):
-        """Добавляет в Excel"""
+        """Добавляет новые тендеры в Excel"""
         try:
+            # Открываем или создаем файл
             if os.path.exists(self.excel_file):
                 wb = load_workbook(self.excel_file)
                 ws = wb.active
@@ -93,9 +110,9 @@ class TenderParser:
                 wb = Workbook()
                 ws = wb.active
                 ws.title = "Тендеры"
-                # Расширенные заголовки с заказчиком
                 headers = ['Номер тендера', 'Название/Объект закупки', 'Ссылка', 
-                          'Цена (руб)', 'ФЗ', 'Окончание подачи заявок', 'Заказчик', 'Дата добавления', 'Файлы скачаны']
+                          'Цена (руб)', 'ФЗ', 'Окончание подачи заявок', 
+                          'Заказчик', 'Дата добавления', 'Город', 'Файлы скачаны']
                 ws.append(headers)
                 
                 header_font = Font(bold=True, size=11, color="FFFFFF")
@@ -106,7 +123,7 @@ class TenderParser:
                     cell.fill = header_fill
                     cell.alignment = Alignment(horizontal="center")
                 
-                ws.column_dimensions['A'].width = 50
+                ws.column_dimensions['A'].width = 25
                 ws.column_dimensions['B'].width = 70
                 ws.column_dimensions['C'].width = 60
                 ws.column_dimensions['D'].width = 18
@@ -114,8 +131,10 @@ class TenderParser:
                 ws.column_dimensions['F'].width = 20
                 ws.column_dimensions['G'].width = 50
                 ws.column_dimensions['H'].width = 20
-                ws.column_dimensions['I'].width = 30
+                ws.column_dimensions['I'].width = 40
+                ws.column_dimensions['J'].width = 20
             
+            # Добавляем данные
             next_row = ws.max_row + 1
             for number, info in new_tenders.items():
                 ws.cell(row=next_row, column=1, value=number)
@@ -126,13 +145,12 @@ class TenderParser:
                 ws.cell(row=next_row, column=6, value=info.get('end_date', 'Не указана'))
                 ws.cell(row=next_row, column=7, value=info.get('customer', 'Не указан'))
                 ws.cell(row=next_row, column=8, value=info['first_seen'])
-                ws.cell(row=next_row, column=9, value='False')
-                ws.cell(row=next_row, column=9, value='False').fill = self._red_fill
-                
+                ws.cell(row=next_row, column=10, value='false')
+                ws.cell(row=next_row, column=10).fill = self.red_fill
                 next_row += 1
             
             wb.save(self.excel_file)
-            print(f"✅ СОХРАНЕНО {len(new_tenders)} тендеров в {self.excel_file}")
+            print(f"💾 Сохранено {len(new_tenders)} новых тендеров (всего в базе: {len(self.existing_numbers)})")
             return len(new_tenders)
             
         except Exception as e:
@@ -141,14 +159,16 @@ class TenderParser:
             return 0
     
     def _append_to_csv(self, new_tenders):
-        """Сохраняет в CSV"""
+        """Сохраняет в CSV с колонками Город и Файлы скачаны"""
         try:
             file_exists = os.path.exists(self.csv_file)
             
             with open(self.csv_file, 'a', newline='', encoding='utf-8-sig') as f:
                 writer = csv.writer(f)
                 if not file_exists:
-                    writer.writerow(['number', 'name', 'url', 'price', 'law', 'end_date', 'customer', 'first_seen'])
+                    # Заголовки с новыми столбцами
+                    writer.writerow(['number', 'name', 'url', 'price', 'law', 'end_date', 
+                                    'customer', 'first_seen', 'city', 'files_downloaded'])
                 
                 for number, info in new_tenders.items():
                     writer.writerow([
@@ -159,10 +179,12 @@ class TenderParser:
                         info.get('law', 'Не указан'),
                         info.get('end_date', 'Не указана'),
                         info.get('customer', 'Не указан'),
-                        info['first_seen']
+                        info['first_seen'],
+                        info.get('city', 'Не указан'),  # Город (пока заглушка, потом можно будет парсить)
+                        'False'                         # Файлы скачаны = False
                     ])
             
-            print(f"✅ СОХРАНЕНО {len(new_tenders)} тендеров в {self.csv_file}")
+            print(f"💾 Сохранено {len(new_tenders)} новых тендеров в {self.csv_file}")
             return len(new_tenders)
         except Exception as e:
             print(f"❌ Ошибка: {e}")
@@ -184,7 +206,7 @@ class TenderParser:
             return [], None
     
     def extract_tenders(self, soup):
-        """Извлекает тендеры с расширенными данными (включая заказчика)"""
+        """Извлекает тендеры с расширенными данными"""
         tenders = {}
         current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
@@ -211,31 +233,27 @@ class TenderParser:
                 if len(name) > 200:
                     name = name[:197] + '...'
                 
-                # ЗАКАЗЧИК
+                # Заказчик
                 customer = 'Не указан'
                 customer_block = block.find('div', class_='registry-entry__body-block')
                 if customer_block:
-                    # Ищем блок с заголовком "Заказчик"
                     customer_title = customer_block.find('div', class_='registry-entry__body-title', string=re.compile(r'Заказчик|Организация'))
                     if customer_title:
-                        # Берем следующий элемент с классом body-href или body-value
                         customer_value = customer_title.find_next_sibling('div', class_='registry-entry__body-href')
                         if not customer_value:
                             customer_value = customer_title.find_next_sibling('div', class_='registry-entry__body-value')
                         if customer_value:
                             customer = customer_value.text.strip()
-                            # Ограничиваем длину
                             if len(customer) > 100:
                                 customer = customer[:97] + '...'
                     else:
-                        # Альтернативный поиск
                         body_href = block.find('div', class_='registry-entry__body-href')
                         if body_href:
                             customer = body_href.text.strip()
                             if len(customer) > 100:
                                 customer = customer[:97] + '...'
                 
-                # ФЗ (закон)
+                # ФЗ
                 law_tag = block.find('div', class_='registry-entry__header-top__title')
                 law = 'Не указан'
                 if law_tag:
@@ -260,7 +278,7 @@ class TenderParser:
                         else:
                             price = price_text.replace('₽', '').replace('&8381;', '').strip()
                 
-                # Дата окончания подачи заявок
+                # Дата окончания
                 end_date = 'Не указана'
                 data_block = block.find('div', class_='data-block')
                 if data_block:
@@ -282,9 +300,9 @@ class TenderParser:
                     'first_seen': current_date
                 }
                 
-                # Короткий вывод в консоль
-                customer_short = customer[:30] + '...' if len(customer) > 30 else customer
-                print(f"  📝 {number} | {law} | {price} руб. | {customer_short}")
+                # Отмечаем, есть ли уже в базе
+                status = "✅" if number not in self.existing_numbers else "⏭️"
+                print(f"  {status} {number} | {law} | {price} руб.")
                 
             except Exception as e:
                 print(f"  ⚠️ Ошибка парсинга блока: {e}")
@@ -300,14 +318,13 @@ class TenderParser:
             return False
     
     def parse_all_pages(self, max_pages=None):
-        """Парсит все страницы и сохраняет"""
+        """Парсит все страницы и сохраняет по ходу"""
         print("="*60)
-        print("🚀 ПАРСИНГ ТЕНДЕРОВ (с ценой, ФЗ, датой окончания, заказчиком)")
+        print("🚀 ПАРСИНГ ТЕНДЕРОВ (сохранение по ходу)")
         print("="*60)
         
-        all_tenders = {}
         page = 1
-        total_tenders_found = 0
+        total_new = 0
         
         while True:
             if max_pages and page > max_pages:
@@ -322,44 +339,24 @@ class TenderParser:
                 print("❌ Тендеры не найдены")
                 break
             
-            # Добавляем все тендеры
-            new_in_page = 0
-            for number, info in page_tenders.items():
-                if number not in all_tenders:
-                    all_tenders[number] = info
-                    new_in_page += 1
+            # Сохраняем ТОЛЬКО НОВЫЕ тендеры с этой страницы
+            new_on_page = self.save_tenders(page_tenders)
+            total_new += new_on_page
             
-            total_tenders_found += new_in_page
-            print(f"📊 На странице: новых {new_in_page}, всего собрано {len(all_tenders)}")
+            print(f"📊 На странице: новых {new_on_page}, всего добавлено {total_new}")
             
             if not self.has_next_page(soup):
                 print("🏁 Последняя страница")
                 break
             
             page += 1
-            time.sleep(1)
+            time.sleep(1)  # Пауза между запросами
         
-        print(f"\n📊 ВСЕГО НАЙДЕНО ТЕНДЕРОВ: {len(all_tenders)}")
+        print(f"\n📊 ВСЕГО ДОБАВЛЕНО НОВЫХ ТЕНДЕРОВ: {total_new}")
+        print(f"📁 Всего в базе: {len(self.existing_numbers)}")
+        print(f"💾 Файл: {self.excel_file}")
         
-        if all_tenders:
-            result = self.save_tenders(all_tenders)
-            print(f"\n✅ СОХРАНЕНО: {result} тендеров")
-            
-            # Показываем пример первых 5
-            print("\n📋 ПРИМЕР НАЙДЕННЫХ ДАННЫХ:")
-            print("-" * 90)
-            for i, (number, info) in enumerate(list(all_tenders.items())[:5], 1):
-                print(f"{i}. {number}")
-                print(f"   Закон: {info['law']}")
-                print(f"   Цена: {info['price']} руб.")
-                print(f"   Окончание: {info['end_date']}")
-                print(f"   Заказчик: {info['customer'][:60]}...")
-                print(f"   Название: {info['name'][:60]}...")
-                print()
-        else:
-            print("❌ НИЧЕГО НЕ НАЙДЕНО")
-        
-        return all_tenders
+        return total_new
 
 
 def main():
@@ -367,7 +364,7 @@ def main():
     
     while True:
         print("\n" + "="*60)
-        print("ПАРСЕР ТЕНДЕРОВ (расширенный)")
+        print("ПАРСЕР ТЕНДЕРОВ (сохранение по ходу)")
         print("="*60)
         print("1. 🚀 Парсить все страницы")
         print("2. 🔢 Парсить N страниц")
@@ -380,7 +377,8 @@ def main():
             try:
                 parser.parse_all_pages()
             except KeyboardInterrupt:
-                print("\n\n⚠️ Прервано")
+                print("\n\n⚠️ Прервано пользователем")
+                print("✅ Данные уже сохранены, можно запустить заново - дубликаты не добавятся")
             except Exception as e:
                 print(f"❌ Ошибка: {e}")
                 traceback.print_exc()
@@ -391,7 +389,7 @@ def main():
                 max_pages = int(pages) if pages else 10
                 parser.parse_all_pages(max_pages=max_pages)
             except KeyboardInterrupt:
-                print("\n\n⚠️ Прервано")
+                print("\n\n⚠️ Прервано пользователем")
             except Exception as e:
                 print(f"❌ Ошибка: {e}")
         
