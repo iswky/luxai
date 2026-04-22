@@ -6,6 +6,9 @@ __pycache__/
 # C extensions
 *.so
 
+# gguf models
+*.gguf
+
 # Distribution / packaging
 .Python
 build/

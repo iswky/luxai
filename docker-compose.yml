@@ -1,0 +1,36 @@
+services:
+
+  backend:
+    build: ./backend
+    container_name: backend
+    volumes:
+      - ./backend:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - llm
+
+  db:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      POSTGRES_DB: appdb
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+    ports:
+      - "5432:5432"
+
+  llm:
+    image: ollama/ollama
+    container_name: llm
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama:/root/.ollama
+      - ./llm-service/models:/models
+      - ./init:/init
+    entrypoint: ["/bin/bash", "/init/init.sh"]
+
+volumes:
+  ollama:
