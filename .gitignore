@@ -6,8 +6,7 @@ __pycache__/
 # C extensions
 *.so
 
-# gguf models
-*.gguf
+parser/tenders_files/
 
 # Distribution / packaging
 .Python
