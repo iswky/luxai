@@ -1,322 +1,139 @@
-import requests
 from bs4 import BeautifulSoup
-import os
-import re
-import zipfile
 from urllib.parse import urljoin
-import time
+from typing import List, Dict, Optional, Tuple, Any
+import requests
+import os
+# import re
+# import zipfile
+# from urllib.parse import urljoin, urlparse, parse_qs
+# import time
 from openpyxl import load_workbook
+from openpyxl.worksheet.worksheet import Worksheet
+from openpyxl.workbook.workbook import Workbook
 from openpyxl.styles import PatternFill
+# import mimetypes
+# import cgi
 
-class TenderFilesDownloader:
-    """Скачивает файлы и парсит город для тендеров из Excel"""
-    
-    def __init__(self, excel_file='tenders.xlsx'):
-        self.excel_file = excel_file
-        self.base_url = 'https://zakupki.gov.ru'
-        self.headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-            'Accept-Language': 'ru-RU,ru;q=0.8,en-US;q=0.5,en;q=0.3',
-        }
-        self.red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-        self.green_fill = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
-    
-    def clean_tender_number(self, raw_number):
-        """Очищает номер тендера от лишних символов"""
-        if not raw_number:
-            return None
-        
-        # Преобразуем в строку
-        number_str = str(raw_number).strip()
-        
-        # Удаляем символ № и другие нецифровые символы, оставляем только цифры и дефисы
-        # Но формат номера: 0338100001126000014 (цифры)
-        cleaned = re.sub(r'[^0-9]', '', number_str)
-        
-        # Если после очистки ничего не осталось - пробуем другие методы
-        if not cleaned:
-            # Убираем только символ № и пробелы
-            cleaned = number_str.replace('№', '').replace(' ', '').strip()
-        
-        print(f"   Очистка номера: '{raw_number}' -> '{cleaned}'")
-        return cleaned
-    
-    def parse_city(self, tender_number):
-        """Парсит город из страницы common-info"""
-        # Очищаем номер
-        clean_number = self.clean_tender_number(tender_number)
-        if not clean_number:
-            return 'Ошибка номера'
-        
-        url = f'https://zakupki.gov.ru/epz/order/notice/ea20/view/common-info.html?regNumber={clean_number}'
-        
-        try:
-            print(f"  🌍 Загрузка страницы для определения города...")
-            print(f"  🔗 URL: {url}")
-            response = requests.get(url, headers=self.headers, timeout=15)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # Ищем регион/город
-            city = self._extract_city_from_soup(soup)
-            print(f"  📍 Город: {city}")
-            return city
-            
-        except Exception as e:
-            print(f"  ❌ Ошибка при парсинге города: {e}")
-            return 'Ошибка'
-    
-    def _extract_city_from_soup(self, soup):
-        """Извлекает город из BeautifulSoup объекта"""
-        # Способ 1: ищем секцию "Регион"
-        region_section = soup.find('section', class_='blockInfo__section')
-        if region_section:
-            # Ищем заголовок "Регион"
-            for span in region_section.find_all('span', class_='section__title'):
-                if span.text and 'Регион' in span.text:
-                    value_span = span.find_next_sibling('span', class_='section__info')
-                    if value_span and value_span.text:
-                        return value_span.text.strip()
-        
-        # Способ 2: ищем "Регион" в тексте
-        page_text = soup.get_text()
-        match = re.search(r'Регион\s*([А-Яа-я\-\s]+?)(?:\n|$)', page_text)
-        if match:
-            return match.group(1).strip()
-        
-        # Способ 3: ищем "Почтовый адрес" или "Место нахождения"
-        for title_text in ['Почтовый адрес', 'Место нахождения']:
-            for span in soup.find_all('span', class_='section__title'):
-                if span.text and title_text in span.text:
-                    value_span = span.find_next_sibling('span', class_='section__info')
-                    if value_span and value_span.text:
-                        address = value_span.text.strip()
-                        # Извлекаем город из адреса
-                        city_match = re.search(r'(?:г\.|город)\s*([А-Яа-я\-]+)', address)
-                        if city_match:
-                            return city_match.group(1)
-        
-        return 'Не указан'
-    
-    def download_files(self, tender_number):
-        """Скачивает все файлы со страницы documents"""
-        # Очищаем номер
-        clean_number = self.clean_tender_number(tender_number)
-        if not clean_number:
-            return 0
-        
-        # Создаем папку для тендера
-        tender_dir = os.path.join('tenders_files', clean_number)
-        os.makedirs(tender_dir, exist_ok=True)
-        
-        url = f'https://zakupki.gov.ru/epz/order/notice/ea20/view/documents.html?regNumber={clean_number}'
-        
-        try:
-            print(f"  📄 Загрузка страницы документов...")
-            print(f"  🔗 URL: {url}")
-            response = requests.get(url, headers=self.headers, timeout=15)
-            
-            if response.status_code == 404:
-                print(f"  ⚠️ Страница не найдена (404) для номера {clean_number}")
-                return 0
-            
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'html.parser')
-            
-            # Ищем блок с файлами
-            files_block = soup.find('div', class_='blockFilesTabDocs')
-            if not files_block:
-                print(f"  ⚠️ Блок с файлами не найден")
-                return 0
-            
-            # Ищем все ссылки на файлы
-            file_links = files_block.find_all('a', href=True)
-            downloaded_count = 0
-            
-            for link in file_links:
-                href = link.get('href', '')
-                # Ищем ссылки на скачивание файлов
-                if '/44fz/filestore/public/1.0/download/priz/file.html' in href:
-                    file_url = urljoin(self.base_url, href)
-                    file_name = link.text.strip()
-                    if not file_name:
-                        file_name = link.get('title', f'file_{downloaded_count+1}')
-                    
-                    # Очищаем имя файла
-                    file_name = self._sanitize_filename(file_name)
-                    file_path = os.path.join(tender_dir, file_name)
-                    
-                    # Скачиваем файл
-                    if self._download_file(file_url, file_path):
-                        downloaded_count += 1
-                        
-                        # Если это архив - распаковываем
-                        if file_name.endswith('.zip') or file_name.endswith('.rar'):
-                            self._extract_archive(file_path, tender_dir)
-            
-            print(f"  📁 Скачано файлов: {downloaded_count}")
-            return downloaded_count
-            
-        except Exception as e:
-            print(f"  ❌ Ошибка при скачивании: {e}")
-            return 0
-    
-    def _download_file(self, url, file_path):
-        """Скачивает один файл"""
-        try:
-            print(f"    ⬇️ Скачивание: {os.path.basename(file_path)}")
-            response = requests.get(url, headers=self.headers, timeout=30)
-            response.raise_for_status()
-            
-            with open(file_path, 'wb') as f:
-                f.write(response.content)
-            
-            print(f"    ✅ Сохранено: {os.path.basename(file_path)} ({len(response.content)} байт)")
-            return True
-            
-        except Exception as e:
-            print(f"    ❌ Ошибка скачивания: {e}")
-            return False
-    
-    def _extract_archive(self, archive_path, extract_to):
-        """Распаковывает архив"""
-        try:
-            if archive_path.endswith('.zip'):
-                with zipfile.ZipFile(archive_path, 'r') as zip_ref:
-                    zip_ref.extractall(extract_to)
-                print(f"    📦 Распакован ZIP архив")
-        except Exception as e:
-            print(f"    ⚠️ Ошибка распаковки: {e}")
-    
-    def _sanitize_filename(self, filename):
-        """Очищает имя файла от недопустимых символов"""
-        invalid_chars = '<>:"/\\|?*'
-        for char in invalid_chars:
-            filename = filename.replace(char, '_')
-        return filename
-    
-    def process_tenders(self):
-        """Основной метод: обрабатывает все тендеры из Excel"""
-        print("="*60)
-        print("🚀 НАЧАЛО ОБРАБОТКИ ТЕНДЕРОВ")
-        print("="*60)
-        
-        if not os.path.exists(self.excel_file):
-            print(f"❌ Файл {self.excel_file} не найден!")
-            return
-        
-        # Загружаем Excel
-        wb = load_workbook(self.excel_file)
-        ws = wb.active
-        
-        # Определяем колонки
-        col_number = 1  # Номер тендера в колонке A
-        
-        # Проверяем наличие данных
-        print(f"\n📌 Проверка данных в файле...")
-        test_value = ws.cell(row=2, column=col_number).value
-        print(f"   Значение в A2: {test_value}")
-        
-        if not test_value:
-            print("❌ В колонке A нет номеров тендеров!")
-            return
-        
-        # Очищаем и выводим первый номер для проверки
-        clean_test = self.clean_tender_number(test_value)
-        print(f"   Очищенный номер: {clean_test}")
-        
-        # Находим колонки Город и Файлы скачаны
-        col_city = None
-        col_downloaded = None
-        
-        for col in range(1, 20):
-            header = ws.cell(row=1, column=col).value
-            if header:
-                if 'Город' in str(header):
-                    col_city = col
-                if 'Файлы скачаны' in str(header):
-                    col_downloaded = col
-        
-        # Если колонок нет - добавляем
-        if not col_city:
-            col_city = ws.max_column + 1
-            ws.cell(row=1, column=col_city, value='Город')
-            print(f"📌 Добавлена колонка 'Город' ({col_city})")
-        
-        if not col_downloaded:
-            col_downloaded = ws.max_column + 1
-            ws.cell(row=1, column=col_downloaded, value='Файлы скачаны')
-            print(f"📌 Добавлена колонка 'Файлы скачаны' ({col_downloaded})")
-        
-        wb.save(self.excel_file)
-        
-        # Обрабатываем каждую строку
-        total_rows = ws.max_row
-        print(f"\n📊 Всего строк с данными: {total_rows - 1}")
-        
-        processed_count = 0
-        skipped_count = 0
-        
-        for row in range(2, total_rows + 1):
-            raw_number = ws.cell(row=row, column=col_number).value
-            if not raw_number:
-                continue
-            
-            # Очищаем номер тендера
-            tender_number = self.clean_tender_number(raw_number)
-            if not tender_number:
-                print(f"\n⚠️ Не удалось очистить номер: {raw_number}")
-                continue
-            
-            print(f"\n{'='*50}")
-            print(f"📌 Тендер {row-1}/{total_rows-1}: {tender_number}")
-            print(f"{'='*50}")
-            
-            # Проверяем, нужно ли обрабатывать
-            downloaded_status = ws.cell(row=row, column=col_downloaded).value
-            if downloaded_status == 'True' or downloaded_status == True:
-                print(f"  ⏭️ Уже обработан, пропускаем")
-                skipped_count += 1
-                continue
-            
-            processed_count += 1
-            
-            # Парсим город
-            city = self.parse_city(tender_number)
-            ws.cell(row=row, column=col_city, value=city)
-            
-            # Скачиваем файлы
-            files_count = self.download_files(tender_number)
-            
-            # Обновляем статус
-            if files_count > 0:
-                ws.cell(row=row, column=col_downloaded, value='True')
-                ws.cell(row=row, column=col_downloaded).fill = self.green_fill
-                print(f"  ✅ Обработка завершена, скачано {files_count} файлов")
-            else:
-                ws.cell(row=row, column=col_downloaded, value='False')
-                ws.cell(row=row, column=col_downloaded).fill = self.red_fill
-                print(f"  ⚠️ Файлы не найдены")
-            
-            # Сохраняем после каждого тендера
-            wb.save(self.excel_file)
-            print(f"  💾 Прогресс сохранен")
-            
-            # Пауза между запросами
-            time.sleep(2)
-        
-        print("\n" + "="*60)
-        print("✅ ОБРАБОТКА ЗАВЕРШЕНА")
-        print(f"📊 Обработано новых: {processed_count}")
-        print(f"📊 Пропущено (уже обработаны): {skipped_count}")
-        print("="*60)
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+    'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Referer': 'https://zakupki.gov.ru/',
+    'Connection': 'keep-alive',
+}
 
+green_fill = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
+
+def download_file(url: str, filename: str = "file.html", tender_number: str = "unknown_tender/"):
+    headers = {
+        'User-Agent': 'Mozilla/5.0'
+    }
+
+    # Формируем путь: tenders_files/<tender_number>/
+    path = os.path.join("tenders_files", tender_number)
+    os.makedirs(path, exist_ok=True)
+    filepath = os.path.join(path, filename)
+
+    try:
+        r = requests.get(url, headers=headers, stream=True, timeout=30)
+        r.raise_for_status()
+        
+        with open(filepath, 'wb') as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+        print('Файл', filename, 'успешно скачан')
+
+        return filepath
+        
+    except requests.RequestException as e:
+        print(f"❌ Ошибка скачивания {filename}: {e}")
+        raise
+
+def extract_file_links(html_content: str, base_url: str = 'https://zakupki.gov.ru') -> List[Dict[str, Optional[str]]]:
+    
+    soup: BeautifulSoup = BeautifulSoup(html_content, 'html.parser')
+    files: List[Dict[str, Optional[str]]] = []
+
+    section: List = soup.find('div', class_= "blockFilesTabDocs")
+
+    if not section:
+        print("❌ Секция blockFilesTabDocs не найдена")
+        return []
+    
+    attachments: List = section.find_all('div', class_="attachment row")
+    print(f"📎 Найдено вложений: {len(attachments)}")
+
+    for i, attachment in enumerate(attachments, 1):
+        link: Optional[Tag] = attachment.find('a', href=lambda h: h and 'https://zakupki.gov.ru' in h)
+
+        if link:
+            file_url: str = link.get('href', '')
+            file_title: str = link.get('title', '')
+            file_name: str = link.text.strip()
+
+            print(file_url)
+            print(file_title)
+            print('\n')
+            
+            file_info = {
+                'url': file_url,
+                'title': file_title
+            }
+
+            files.append(file_info)
+
+    return files
+
+def read_tenders_info(filename: str) -> List[Tuple[Any, Any]]:
+    wb: Workbook = load_workbook(filename)
+    ws: Worksheet = wb.active
+
+    pairs: List[Tuple[Any, Any]] = []
+    for row in range(2, ws.max_row + 1):
+        val_1: Any = ws.cell(row=row, column=1).value[2:]
+        val_10: Any = ws.cell(row=row, column=10).value
+        pairs.append((val_1, val_10))
+
+    return pairs
 
 def main():
-    downloader = TenderFilesDownloader('tenders.xlsx')
-    downloader.process_tenders()
+    
+    tenders_info: List[Tuple[Any, Any]] = read_tenders_info("tenders.xlsx")
+
+    wb: Workbook = load_workbook("tenders.xlsx")
+    ws: Worksheet = wb.active
+
+    i = 2
+    for number, flag in tenders_info:
+        url = 'https://zakupki.gov.ru/epz/order/notice/ea20/view/documents.html?regNumber=' + number
+
+        print("сайт откуда скачиваем: ", url)
+
+        if (flag == 'False'):
+            print("скачиваем файлы для тендера:", number)
+            response = requests.get(url, headers = headers)
+
+            # Получаем HTML как строку
+            html_text: str = response.text
+
+            files: List[Dict[str, Optional[str]]] = extract_file_links(html_text)
+
+            try:
+                for file_info in files:
+                    download_file(file_info['url'], file_info['title'], number)
+                ws.cell(row=i, column=10).value = 'True'
+                ws.cell(row=i, column=10).fill = green_fill
+                wb.save("tenders.xlsx")
+                
+            except requests.RequestException as e:
+                print()
+        
+        i += 1
+
 
 
 if __name__ == "__main__":
     main()
+
