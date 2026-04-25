@@ -358,8 +358,7 @@ class TenderParser:
         
         return total_new
 
-
-def main():
+def Parse_gos_zakupki():
     parser = TenderParser('tenders.xlsx')
     
     while True:
@@ -399,6 +398,3 @@ def main():
         
         else:
             print("❌ Неверный выбор")
-
-if __name__ == "__main__":
-    main()

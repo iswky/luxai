@@ -3,16 +3,10 @@ from urllib.parse import urljoin
 from typing import List, Dict, Optional, Tuple, Any
 import requests
 import os
-# import re
-# import zipfile
-# from urllib.parse import urljoin, urlparse, parse_qs
-# import time
 from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.workbook.workbook import Workbook
 from openpyxl.styles import PatternFill
-# import mimetypes
-# import cgi
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
