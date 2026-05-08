@@ -3,9 +3,53 @@
 {% block title %}Главная{% endblock %}
 
 {% block content %}
-<div class="text-center py-5">
-    <h1>Система работы с госзакупками</h1>
-    <p class="lead">Локальная веб-обертка для просмотра файлов и оборудования</p>
-    <a href="/files/" class="btn btn-primary btn-lg">Начать работу</a>
-</div>
+<section class="hero">
+    <div class="hero-badge">
+        <span class="pulse-dot"></span>
+        AI Procurement Dashboard
+    </div>
+
+    <h1 class="hero-title">
+        Система работы<br>
+        с госзакупками
+    </h1>
+
+    <p class="hero-text">
+        Загружай документы, проверяй обработанные файлы, разбирай заявки,
+        выбирай поставщиков и формируй договоры на закупку.
+    </p>
+
+    <div class="hero-actions">
+        <a href="/applications/" class="btn-neon btn-neon-primary">
+            Разобрать заявки
+        </a>
+
+        <a href="/files/" class="btn-neon btn-neon-secondary">
+            Обработанные файлы
+        </a>
+    </div>
+</section>
+
+<section class="dashboard-grid">
+    <a href="/files/" class="dashboard-card">
+        <div class="card-topline"></div>
+        <div class="dashboard-icon">📄</div>
+        <h3>Обработанные файлы</h3>
+        <p>Просмотр статусов, уверенности распознавания и редактирование промптов.</p>
+    </a>
+
+    <a href="/applications/" class="dashboard-card">
+        <div class="card-topline"></div>
+        <div class="dashboard-icon">🧩</div>
+        <h3>Разбор заявок</h3>
+        <p>Закупка, товары внутри неё, варианты покупки и выбор поставщиков.</p>
+    </a>
+
+    <a href="/equipment/" class="dashboard-card">
+        <div class="card-topline"></div>
+        <div class="dashboard-icon">⚖️</div>
+        <h3>Сравнение</h3>
+        <p>Сравнение поставщиков, позиций и быстрый доступ к PDF-заявкам.</p>
+    </a>
+</section>
 {% endblock %}

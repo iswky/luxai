@@ -1,0 +1,167 @@
+<!-- webui/templates/webui/application_detail.html -->
+
+{% extends 'webui/base.html' %}
+{% load dict_filters %}
+
+{% block title %}{{ application.title }}{% endblock %}
+
+{% block content %}
+<div class="application-detail-layout">
+    <aside class="application-sidebar">
+        <div class="card-topline"></div>
+
+        <div class="section-kicker">Закупка</div>
+        <h1>{{ application.title }}</h1>
+
+        <div class="sidebar-number">
+            {{ application.number }}
+        </div>
+
+        <div class="sidebar-meta">
+            <div>
+                <span>Заказчик</span>
+                <strong>{{ application.customer }}</strong>
+            </div>
+
+            <div>
+                <span>Дедлайн</span>
+                <strong>{{ application.deadline }}</strong>
+            </div>
+
+            <div>
+                <span>Бюджет</span>
+                <strong>{{ application.price }}</strong>
+            </div>
+
+            <div>
+                <span>Позиций</span>
+                <strong>{{ application.items|length }}</strong>
+            </div>
+        </div>
+
+        <a
+            href="{{ application.file }}"
+            target="_blank"
+            class="btn-neon btn-neon-primary btn-full"
+        >
+            Открыть PDF заявки
+        </a>
+
+        <a
+            href="{% url 'contract_page' application.id %}"
+            class="btn-neon btn-contract btn-full"
+        >
+            Заполнить договор
+        </a>
+
+        <a
+            href="/applications/"
+            class="btn-neon btn-neon-secondary btn-full"
+        >
+            Назад к заявкам
+        </a>
+    </aside>
+
+    <section class="application-workspace">
+        <div class="workspace-header">
+            <div>
+                <div class="section-kicker">Parsed Products</div>
+                <h2>Выбор поставщиков</h2>
+            </div>
+
+            <div class="header-chip">
+                Выбери “по кайфу”
+            </div>
+        </div>
+
+        <div class="parsed-items">
+            {% for item in application.items %}
+                <article class="parsed-item-card">
+                    <div class="parsed-left">
+                        <div class="item-index">
+                            {{ forloop.counter }}
+                        </div>
+
+                        <div>
+                            <h3>{{ item.name }}</h3>
+
+                            <div class="item-tags">
+                                <span>{{ item.quantity }}</span>
+                                <span>Бюджет: {{ item.budget }}</span>
+                            </div>
+
+                            <p>
+                                {{ item.requirements }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="shops-column">
+                        <div class="shops-title">
+                            Где купить
+                        </div>
+
+                        {% for shop in item.shops %}
+                            <div
+                                class="shop-card {% if selected_shops|get_item:item.id == shop.id %}shop-card-selected{% endif %}"
+                            >
+                                <div>
+                                    <h4>{{ shop.name }}</h4>
+
+                                    <div class="shop-meta">
+                                        <span>Цена: {{ shop.price }}</span>
+                                        <span>Доставка: {{ shop.delivery }}</span>
+                                        <span>Рейтинг: {{ shop.rating }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="shop-buy">
+                                    <strong>{{ shop.price }}</strong>
+
+                                    <form
+                                        method="post"
+                                        action="{% url 'select_shop' application.id %}"
+                                    >
+                                        {% csrf_token %}
+
+                                        <input
+                                            type="hidden"
+                                            name="item_id"
+                                            value="{{ item.id }}"
+                                        >
+
+                                        <input
+                                            type="hidden"
+                                            name="shop_id"
+                                            value="{{ shop.id }}"
+                                        >
+
+                                        <button
+                                            type="submit"
+                                            class="btn-neon {% if selected_shops|get_item:item.id == shop.id %}btn-selected{% else %}btn-neon-secondary{% endif %} btn-shop"
+                                        >
+                                            {% if selected_shops|get_item:item.id == shop.id %}
+                                                По кайфу ✓
+                                            {% else %}
+                                                Выбрать
+                                            {% endif %}
+                                        </button>
+                                    </form>
+
+                                    <a
+                                        href="{{ shop.url }}"
+                                        target="_blank"
+                                        class="shop-link"
+                                    >
+                                        Открыть сайт
+                                    </a>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    </section>
+</div>
+{% endblock %}
