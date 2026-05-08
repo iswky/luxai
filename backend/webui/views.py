@@ -335,6 +335,31 @@ APPLICATIONS = [
 ]
 
 
+EQUIPMENT = [
+    {
+        'id': 1,
+        'supplier': 'ООО ТехСнаб',
+        'item': 'Сервер стоечный 2U',
+        'category': 'Серверное оборудование',
+        'application_file': '/static/webui/files/application_form.pdf',
+    },
+    {
+        'id': 2,
+        'supplier': 'АО ИнфоСистемы',
+        'item': 'Коммутатор 48 портов',
+        'category': 'Сетевое оборудование',
+        'application_file': '/static/webui/files/application_form.pdf',
+    },
+    {
+        'id': 3,
+        'supplier': 'ООО МедТехника',
+        'item': 'Источник бесперебойного питания',
+        'category': 'Электропитание',
+        'application_file': '/static/webui/files/application_form.pdf',
+    },
+]
+
+
 SELECTED_SHOPS = {}
 
 
@@ -369,32 +394,8 @@ def update_prompt(request, file_id):
 
 
 def equipment_page(request):
-    equipment = [
-        {
-            'id': 1,
-            'supplier': 'ООО ТехСнаб',
-            'item': 'Сервер стоечный 2U',
-            'category': 'Серверное оборудование',
-            'application_file': '/static/webui/files/application_form.pdf',
-        },
-        {
-            'id': 2,
-            'supplier': 'АО ИнфоСистемы',
-            'item': 'Коммутатор 48 портов',
-            'category': 'Сетевое оборудование',
-            'application_file': '/static/webui/files/application_form.pdf',
-        },
-        {
-            'id': 3,
-            'supplier': 'ООО МедТехника',
-            'item': 'Источник бесперебойного питания',
-            'category': 'Электропитание',
-            'application_file': '/static/webui/files/application_form.pdf',
-        },
-    ]
-
     return render(request, 'webui/equipment.html', {
-        'equipment': equipment,
+        'equipment': EQUIPMENT,
     })
 
 
