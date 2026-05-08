@@ -1,0 +1,25 @@
+{% extends 'webui/base.html' %}
+
+{% block title %}Оборудование{% endblock %}
+
+{% block content %}
+<h2>Оборудование и поставщики</h2>
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>Поставщик</th>
+            <th>Оборудование</th>
+            <th>Категория</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in equipment %}
+        <tr>
+            <td>{{ item.supplier }}</td>
+            <td>{{ item.item }}</td>
+            <td>{{ item.category }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

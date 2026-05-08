@@ -6,6 +6,8 @@ __pycache__/
 # C extensions
 *.so
 
+parser/tenders_files/
+
 # Distribution / packaging
 .Python
 build/
