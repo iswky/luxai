@@ -1,10 +1,11 @@
-import requests
+from typing import Dict, Set, Optional, Any
 from bs4 import BeautifulSoup
-import csv
 from datetime import datetime
-import os
-import time
 import traceback
+import requests
+import time
+import csv
+import os
 import re
 
 try:
@@ -18,10 +19,17 @@ except ImportError as e:
 
 class TenderParser:
     """Парсер тендеров с расширенными данными"""
-    
-    red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+
+    red_fill: PatternFill
+    excel_file: str
+    csv_file: str
+    headers: Dict[str, str]
+    base_url: str
+    base_params: Dict[str, str]
+    existing_numbers: Set[str]
 
     def __init__(self, excel_file='tenders.xlsx'):
+        self.red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
         self.excel_file = excel_file
         self.csv_file = excel_file.replace('.xlsx', '.csv')
         self.headers = {
@@ -32,21 +40,7 @@ class TenderParser:
         
         self.base_url = 'https://zakupki.gov.ru/epz/order/extendedsearch/results.html'
         
-        self.base_params = {
-            'morphology': 'on',
-            'search-filter': 'Дате размещения',
-            'sortDirection': 'false',
-            'recordsPerPage': '_10',
-            'showLotsInfoHidden': 'false',
-            'sortBy': 'PUBLISH_DATE',
-            'fz44': 'on',
-            'fz223': 'on',
-            'af': 'on',
-            'currencyIdGeneral': '-1',
-            'okpd2IdsWithNested': 'on',
-            'okpd2Ids': '8873938,8874157,8874056,8873907,8874087,8874160,8874159,8874058,8874059,8874055,8874158,8873937,8873908,8873906,8874054,8874060,8874061',
-            'okpd2IdsCodes': '63,61.1,26.3,27,32.9,61.9,61.3,26.5,26.6,26.2,61.2,62,28,26,26.1,26.7,26.8'
-        }
+        self.base_params = self.load_filters_from_file("./params.txt")
         
         # Загружаем существующие номера при запуске (один раз)
         self.existing_numbers = self.load_existing_tenders()
@@ -55,6 +49,35 @@ class TenderParser:
         print("🎯 ПАРСЕР ЗАПУЩЕН")
         print("="*60)
     
+    def load_filters_from_file(self, file_path: str) -> Dict[str, str]:
+        """
+        Считывает фильтры из txt файла в формате key=value
+        
+        Returns:
+            Dict[str, str]: Словарь параметров
+        """
+        params: Dict[str, str] = {}
+        
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    # Пропускаем пустые строки и комментарии
+                    if not line or line.startswith('#'):
+                        continue
+                    
+                    # Разделяем по первому знаку равенства
+                    if '=' in line:
+                        key, value = line.split('=', 1)
+                        params[key.strip()] = value.strip()
+                        
+        except FileNotFoundError:
+            print(f"❌ Файл {file_path} не найден")
+        except Exception as e:
+            print(f"❌ Ошибка при чтении файла: {e}")
+        
+        return params
+
     def load_existing_tenders(self):
         """Загружает существующие номера тендеров из Excel"""
         existing_numbers = set()
@@ -99,8 +122,36 @@ class TenderParser:
         
         return result
     
+    def _find_empty_rows(self, ws):
+        """
+        Находит все пустые строки в таблице.
+        Возвращает список номеров строк, где первая колонка пустая.
+        """
+        empty_rows = []
+        max_row = ws.max_row
+        
+        # Если в таблице только заголовки, нет пустых строк
+        if max_row <= 1:
+            return []
+        
+        # Собираем все номера строк с пустой первой колонкой
+        for row in range(2, max_row + 1):
+            if ws.cell(row=row, column=1).value is None:
+                empty_rows.append(row)
+            else:
+                # Проверяем, не пустая ли строка (все колонки пустые)
+                is_completely_empty = True
+                for col in range(1, 12):  # Проверяем все 11 колонок
+                    if ws.cell(row=row, column=col).value is not None:
+                        is_completely_empty = False
+                        break
+                if is_completely_empty:
+                    empty_rows.append(row)
+        
+        return sorted(empty_rows)  # Сортируем для последовательного заполнения
+
     def _append_to_excel(self, new_tenders):
-        """Добавляет новые тендеры в Excel"""
+        """Добавляет новые тендеры в Excel, заполняя пустые строки в начале"""
         try:
             # Открываем или создаем файл
             if os.path.exists(self.excel_file):
@@ -112,46 +163,63 @@ class TenderParser:
                 ws.title = "Тендеры"
                 headers = ['Номер тендера', 'Название/Объект закупки', 'Ссылка', 
                           'Цена (руб)', 'ФЗ', 'Окончание подачи заявок', 
-                          'Заказчик', 'Дата добавления', 'Город', 'Файлы скачаны']
+                          'Заказчик', 'Дата добавления', 'Город', 'Файлы скачаны', 'Файлы отфильтрованы']
                 ws.append(headers)
-                
-                header_font = Font(bold=True, size=11, color="FFFFFF")
-                header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-                for col in range(1, len(headers) + 1):
-                    cell = ws.cell(row=1, column=col)
-                    cell.font = header_font
-                    cell.fill = header_fill
-                    cell.alignment = Alignment(horizontal="center")
-                
-                ws.column_dimensions['A'].width = 25
-                ws.column_dimensions['B'].width = 70
-                ws.column_dimensions['C'].width = 60
-                ws.column_dimensions['D'].width = 18
-                ws.column_dimensions['E'].width = 10
-                ws.column_dimensions['F'].width = 20
-                ws.column_dimensions['G'].width = 50
-                ws.column_dimensions['H'].width = 20
-                ws.column_dimensions['I'].width = 40
-                ws.column_dimensions['J'].width = 20
             
-            # Добавляем данные
-            next_row = ws.max_row + 1
+            ws.column_dimensions['A'].width = 25
+            ws.column_dimensions['B'].width = 70
+            ws.column_dimensions['C'].width = 60
+            ws.column_dimensions['D'].width = 18
+            ws.column_dimensions['E'].width = 10
+            ws.column_dimensions['F'].width = 20
+            ws.column_dimensions['G'].width = 50
+            ws.column_dimensions['H'].width = 20
+            ws.column_dimensions['I'].width = 30
+            ws.column_dimensions['J'].width = 20
+            ws.column_dimensions['K'].width = 30
+
+            # Находим пустые строки
+            empty_rows = self._find_empty_rows(ws)
+            
+            # Создаем очередь из пустых строк
+            from collections import deque
+            empty_rows_queue = deque(empty_rows)
+            
+            # Подготавливаем данные для добавления
+            added_count = 0
+            next_new_row = ws.max_row + 1
+            
             for number, info in new_tenders.items():
-                ws.cell(row=next_row, column=1, value=number)
-                ws.cell(row=next_row, column=2, value=info['name'])
-                ws.cell(row=next_row, column=3, value=info['url'])
-                ws.cell(row=next_row, column=4, value=info.get('price', 'Не указана'))
-                ws.cell(row=next_row, column=5, value=info.get('law', 'Не указан'))
-                ws.cell(row=next_row, column=6, value=info.get('end_date', 'Не указана'))
-                ws.cell(row=next_row, column=7, value=info.get('customer', 'Не указан'))
-                ws.cell(row=next_row, column=8, value=info['first_seen'])
-                ws.cell(row=next_row, column=10, value='false')
-                ws.cell(row=next_row, column=10).fill = self.red_fill
-                next_row += 1
+                # Берем следующую пустую строку или создаем новую
+                if empty_rows_queue:
+                    target_row = empty_rows_queue.popleft()
+                    location = f"пустую строку {target_row}"
+                else:
+                    target_row = next_new_row
+                    next_new_row += 1
+                    location = f"новую строку {target_row}"
+                
+                # Записываем данные
+                ws.cell(row=target_row, column=1, value=number)
+                ws.cell(row=target_row, column=2, value=info['name'])
+                ws.cell(row=target_row, column=3, value=info['url'])
+                ws.cell(row=target_row, column=4, value=info.get('price', 'Не указана'))
+                ws.cell(row=target_row, column=5, value=info.get('law', 'Не указан'))
+                ws.cell(row=target_row, column=6, value=info.get('end_date', 'Не указана'))
+                ws.cell(row=target_row, column=7, value=info.get('customer', 'Не указан'))
+                ws.cell(row=target_row, column=8, value=info['first_seen'])
+                ws.cell(row=target_row, column=9, value=info.get('city', 'Не указан'))
+                ws.cell(row=target_row, column=10, value='False')
+                ws.cell(row=target_row, column=10).fill = self.red_fill
+                ws.cell(row=target_row, column=11, value='False')
+                ws.cell(row=target_row, column=11).fill = self.red_fill
+                
+                added_count += 1
+                print(f"   ➕ Тендер {number} добавлен в {location}")
             
             wb.save(self.excel_file)
-            print(f"💾 Сохранено {len(new_tenders)} новых тендеров (всего в базе: {len(self.existing_numbers)})")
-            return len(new_tenders)
+            print(f"💾 Добавлено {added_count} тендеров (пустых строк использовано: {len(empty_rows[:added_count])})")
+            return added_count
             
         except Exception as e:
             print(f"❌ Ошибка сохранения: {e}")
@@ -190,8 +258,9 @@ class TenderParser:
             print(f"❌ Ошибка: {e}")
             return 0
     
-    def parse_page(self, page_number=1):
+    def parse_page(self: TenderParser, page_number: int = 1):
         """Парсит страницу"""
+
         params = self.base_params.copy()
         params['pageNumber'] = str(page_number)
         
@@ -323,14 +392,17 @@ class TenderParser:
         print("🚀 ПАРСИНГ ТЕНДЕРОВ (сохранение по ходу)")
         print("="*60)
         
-        page = 1
-        total_new = 0
+        page: int = 1
+        total_new: int = 0
         
         while True:
             if max_pages and page > max_pages:
                 print(f"🏁 Достигнут лимит страниц ({max_pages})")
                 break
             
+            # self.parse_page(page)
+
+
             print(f"\n--- Страница {page} ---")
             
             page_tenders, soup = self.parse_page(page)
@@ -358,10 +430,10 @@ class TenderParser:
         
         return total_new
 
+def Parse_gos_zakupki():
 
-def main():
     parser = TenderParser('tenders.xlsx')
-    
+
     while True:
         print("\n" + "="*60)
         print("ПАРСЕР ТЕНДЕРОВ (сохранение по ходу)")
@@ -401,4 +473,4 @@ def main():
             print("❌ Неверный выбор")
 
 if __name__ == "__main__":
-    main()
+    Parse_gos_zakupki()

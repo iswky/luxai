@@ -1,0 +1,13 @@
+morphology=on,
+search-filter=Дате размещения,
+sortDirection=false,
+recordsPerPage=_10,
+showLotsInfoHidden=false,
+sortBy=PUBLISH_DATE
+fz44=on
+fz223=on
+af=on
+currencyIdGeneral=-1
+okpd2IdsWithNested=on
+okpd2Ids=8873938,8874157,8874056,8873907,8874087,8874160,8874159,8874058,8874059,8874055,8874158,8873937,8873908,8873906,8874054,8874060,8874061,
+okpd2IdsCodes=26,26.1,26.2,26.3,26.5,26.7,26.8
