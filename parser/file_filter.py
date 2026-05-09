@@ -102,6 +102,42 @@ def delete_files(path: str, filenames: List[str]):
         except Exception as e:
             print(f"Ошибка при удалении {filename}: {e}")
 
+def convert_files_to_pdf(folder_path: str, files: List[str]):
+    # Проверяем существование директории
+    if not os.path.exists(folder_path):
+        raise FileNotFoundError(f"Директория '{folder_path}' не существует")
+    
+    if not os.path.isdir(folder_path):
+        raise NotADirectoryError(f"'{folder_path}' не является директорией")
+
+    for filename in files:
+        file_path = folder_path + '/' + filename
+
+        convert1file2pdf(file_path)
+
+def convert1file2pdf(file_path: str):
+    # Проверяем существование директории
+    if not os.path.exists(file_path):
+        raise FileNotFoundError(f"Директория '{file_path}' не существует")
+
+    file_extension = os.path.splitext(file_path)[1].lower()
+    output_filename = os.path.splitext(file_path)[0] + ".pdf"
+    
+    try:               
+        if file_extension in ['.pdf', '.xlsx', '.xls']:
+            convert_excel_to_pdf(file_path, output_filename)
+        if file_extension in ['.docx', '.doc']:
+            convert_word_to_pdf(file_path, output_filename)
+        else:
+            print(f"⚠️ Неподдерживаемый формат: {file_path}")
+        
+        print(f"✅ Конвертирован: {file_path} -> {output_filename}")
+        
+    except Exception as e:
+        print(f"❌ Ошибка при конвертации {file_path}: {str(e)}")
+    
+
+
 def convert_to_pdf(path: str, files: List[str]):
     """
     Конвертирует указанные файлы в PDF формат.
@@ -123,6 +159,7 @@ def convert_to_pdf(path: str, files: List[str]):
     
     for filename in files:
         file_path = os.path.join(path, filename)
+        # print(file_path)
         
         # Проверяем существование файла
         if not os.path.exists(file_path):
@@ -136,9 +173,11 @@ def convert_to_pdf(path: str, files: List[str]):
         output_path = os.path.join(path, output_filename)
         
         try:               
-            if file_extension in ['.pdf', '.xlsx', '.xls']:
+            if file_extension in ['.pdf']:
                 continue
-            if file_extension in ['.docx', '.doc']:
+            if file_extension in ['.xlsx', '.xls']:
+                convert_excel_to_pdf(file_path, output_path)
+            if file_extension in ['.docx']:
                 convert_word_to_pdf(file_path, output_path)
             else:
                 print(f"⚠️ Неподдерживаемый формат: {filename}")
@@ -168,8 +207,63 @@ def convert_word_to_pdf(input_path: str, output_path: str):
 
     # Конвертация одного файла
     convert(input_path)
-    # или указать выходной путь
-    convert("документ.docx", "результат.pdf")
+
+def convert_excel_to_pdf(input_path: str, output_path: str):
+    """
+    Конвертирует Excel в PDF с правильным чтением данных
+    """
+    import pandas as pd
+    import matplotlib.pyplot as plt
+    from matplotlib.backends.backend_pdf import PdfPages
+
+    # print(input_path)
+    
+    # Читаем с дополнительными параметрами
+    df = pd.read_excel(
+        input_path,
+        header=None,  # Не использовать первую строку как заголовок
+        keep_default_na=False,  # Не заменять пустые значения на NaN
+        na_filter=False  # Отключить фильтрацию NA
+    )
+    
+    # Удаляем полностью пустые строки и столбцы
+    df = df.dropna(how='all', axis=0)  # Убираем пустые строки
+    df = df.dropna(how='all', axis=1)  # Убираем пустые столбцы
+    
+    print(f"Размер таблицы: {df.shape}")
+    
+    if df.empty or df.shape[0] == 0 or df.shape[1] == 0:
+        raise ValueError("Excel файл не содержит данных")
+    
+    # Заменяем NaN на пустые строки
+    df = df.fillna('')
+    
+    # Вычисляем размер
+    num_rows, num_cols = df.shape
+    fig_width = max(12, num_cols * 2)
+    fig_height = max(8, num_rows * 0.6)
+    
+    fig, ax = plt.subplots(figsize=(fig_width, fig_height))
+    ax.axis('tight')
+    ax.axis('off')
+    
+    # Создаем таблицу БЕЗ заголовков (так как header=None)
+    table = ax.table(
+        cellText=df.values,
+        cellLoc='left',  # Выравнивание по левому краю
+        loc='center',
+        colWidths=[1.0/num_cols] * num_cols
+    )
+    
+    table.auto_set_font_size(False)
+    table.set_fontsize(9)
+    table.scale(1, 2)
+    
+    with PdfPages(output_path) as pdf:
+        pdf.savefig(fig, bbox_inches='tight', dpi=150)
+    
+    plt.close()
+    print(f"✅ PDF сохранен: {output_path}")
 
 def delete_extra_files(path: str, Neccesary_files: List[str]):
     """
@@ -418,14 +512,13 @@ def file_filter():
 
         files_with_keywords = find_files_with_keywords(folder_path, files_in_folder)
 
-        delete_extra_files(folder_path, files_with_keywords)
 
-        if (not files_with_keywords):
-            continue
+        if (not files_with_keywords):   # елси мы не нашли ни один файл с нужными нам словами, то конвертируем все файлы
+            convert_files_to_pdf(folder_path, files_in_folder)
+        else:   # если нашли файлы с нужными словами, то конвертируем их и удаляем все остальные
+            convert_files_to_pdf(folder_path, files_with_keywords)
 
-        convert_to_pdf(folder_path, files_with_keywords)
-
-        delete_files(folder_path, files_with_keywords)
+        delete_files(folder_path, files_in_folder)
 
         ws.cell(row=row_num, column=11, value='True')
         ws.cell(row=row_num, column=11).fill = green_fill

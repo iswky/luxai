@@ -135,18 +135,34 @@ class TenderParser:
         
         return sorted(empty_rows)  # Сортируем для последовательного заполнения
 
-
     def _append_to_excel(self, new_tenders):
         """Добавляет новые тендеры в Excel, заполняя пустые строки в начале"""
         try:
-            # Открываем файл
+            # Открываем или создаем файл
             if os.path.exists(self.excel_file):
                 wb = load_workbook(self.excel_file)
                 ws = wb.active
             else:
-                wb = self._create_excel_file()
+                wb = Workbook()
                 ws = wb.active
+                ws.title = "Тендеры"
+                headers = ['Номер тендера', 'Название/Объект закупки', 'Ссылка', 
+                          'Цена (руб)', 'ФЗ', 'Окончание подачи заявок', 
+                          'Заказчик', 'Дата добавления', 'Город', 'Файлы скачаны', 'Файлы отфильтрованы']
+                ws.append(headers)
             
+            ws.column_dimensions['A'].width = 25
+            ws.column_dimensions['B'].width = 70
+            ws.column_dimensions['C'].width = 60
+            ws.column_dimensions['D'].width = 18
+            ws.column_dimensions['E'].width = 10
+            ws.column_dimensions['F'].width = 20
+            ws.column_dimensions['G'].width = 50
+            ws.column_dimensions['H'].width = 20
+            ws.column_dimensions['I'].width = 30
+            ws.column_dimensions['J'].width = 20
+            ws.column_dimensions['K'].width = 30
+
             # Находим пустые строки
             empty_rows = self._find_empty_rows(ws)
             
