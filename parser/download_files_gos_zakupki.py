@@ -80,27 +80,26 @@ def extract_file_links(html_content: str, base_url: str = 'https://zakupki.gov.r
 
     return files
 
-def read_tenders_info(filename: str) -> List[Tuple[Any, Any]]:
+def read_tenders_info(filename: str) -> List[Tuple[Any, Any, int]]:
     wb: Workbook = load_workbook(filename)
     ws: Worksheet = wb.active
 
-    pairs: List[Tuple[Any, Any]] = []
+    pairs: List[Tuple[Any, Any, int]] = []
     for row in range(2, ws.max_row + 1):
         val_1: Any = ws.cell(row=row, column=1).value[2:]
         val_10: Any = ws.cell(row=row, column=10).value
-        pairs.append((val_1, val_10))
+        pairs.append((val_1, val_10, row))
 
     return pairs
 
-def main():
-    
-    tenders_info: List[Tuple[Any, Any]] = read_tenders_info("tenders.xlsx")
+def download_tenders_files():
+    tenders_info: List[Tuple[Any, Any, int]] = read_tenders_info("tenders.xlsx")
 
     wb: Workbook = load_workbook("tenders.xlsx")
     ws: Worksheet = wb.active
 
     i = 2
-    for number, flag in tenders_info:
+    for number, flag, row_num in tenders_info:
         url = 'https://zakupki.gov.ru/epz/order/notice/ea20/view/documents.html?regNumber=' + number
 
         print("сайт откуда скачиваем: ", url)
@@ -114,20 +113,17 @@ def main():
 
             files: List[Dict[str, Optional[str]]] = extract_file_links(html_text)
 
+            if not files:
+                continue
+
             try:
                 for file_info in files:
                     download_file(file_info['url'], file_info['title'], number)
-                ws.cell(row=i, column=10).value = 'True'
-                ws.cell(row=i, column=10).fill = green_fill
+                ws.cell(row=row_num, column=10).value = 'True'
+                ws.cell(row=row_num, column=10).fill = green_fill
                 wb.save("tenders.xlsx")
                 
             except requests.RequestException as e:
                 print()
         
         i += 1
-
-
-
-if __name__ == "__main__":
-    main()
-

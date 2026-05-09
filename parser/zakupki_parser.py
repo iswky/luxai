@@ -1,10 +1,11 @@
-import requests
+from typing import Dict, Set, Optional, Any
 from bs4 import BeautifulSoup
-import csv
 from datetime import datetime
-import os
-import time
 import traceback
+import requests
+import time
+import csv
+import os
 import re
 
 try:
@@ -18,10 +19,17 @@ except ImportError as e:
 
 class TenderParser:
     """Парсер тендеров с расширенными данными"""
-    
-    red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+
+    red_fill: PatternFill
+    excel_file: str
+    csv_file: str
+    headers: Dict[str, str]
+    base_url: str
+    base_params: Dict[str, str]
+    existing_numbers: Set[str]
 
     def __init__(self, excel_file='tenders.xlsx'):
+        self.red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
         self.excel_file = excel_file
         self.csv_file = excel_file.replace('.xlsx', '.csv')
         self.headers = {
@@ -45,7 +53,7 @@ class TenderParser:
             'currencyIdGeneral': '-1',
             'okpd2IdsWithNested': 'on',
             'okpd2Ids': '8873938,8874157,8874056,8873907,8874087,8874160,8874159,8874058,8874059,8874055,8874158,8873937,8873908,8873906,8874054,8874060,8874061',
-            'okpd2IdsCodes': '63,61.1,26.3,27,32.9,61.9,61.3,26.5,26.6,26.2,61.2,62,28,26,26.1,26.7,26.8'
+            'okpd2IdsCodes': '26,26.1,26.2,26.3,26.5,26.7,26.8'
         }
         
         # Загружаем существующие номера при запуске (один раз)
@@ -112,7 +120,7 @@ class TenderParser:
                 ws.title = "Тендеры"
                 headers = ['Номер тендера', 'Название/Объект закупки', 'Ссылка', 
                           'Цена (руб)', 'ФЗ', 'Окончание подачи заявок', 
-                          'Заказчик', 'Дата добавления', 'Город', 'Файлы скачаны']
+                          'Заказчик', 'Дата добавления', 'Город', 'Файлы скачаны', 'Файлы отфильтрованы']
                 ws.append(headers)
                 
                 header_font = Font(bold=True, size=11, color="FFFFFF")
@@ -133,6 +141,7 @@ class TenderParser:
                 ws.column_dimensions['H'].width = 20
                 ws.column_dimensions['I'].width = 40
                 ws.column_dimensions['J'].width = 20
+                ws.column_dimensions['K'].width = 20
             
             # Добавляем данные
             next_row = ws.max_row + 1
@@ -145,8 +154,10 @@ class TenderParser:
                 ws.cell(row=next_row, column=6, value=info.get('end_date', 'Не указана'))
                 ws.cell(row=next_row, column=7, value=info.get('customer', 'Не указан'))
                 ws.cell(row=next_row, column=8, value=info['first_seen'])
-                ws.cell(row=next_row, column=10, value='false')
+                ws.cell(row=next_row, column=10, value='False')
                 ws.cell(row=next_row, column=10).fill = self.red_fill
+                ws.cell(row=next_row, column=11, value='False')
+                ws.cell(row=next_row, column=11).fill = self.red_fill
                 next_row += 1
             
             wb.save(self.excel_file)
@@ -190,8 +201,9 @@ class TenderParser:
             print(f"❌ Ошибка: {e}")
             return 0
     
-    def parse_page(self, page_number=1):
+    def parse_page(self: TenderParser, page_number: int = 1):
         """Парсит страницу"""
+
         params = self.base_params.copy()
         params['pageNumber'] = str(page_number)
         
@@ -323,14 +335,17 @@ class TenderParser:
         print("🚀 ПАРСИНГ ТЕНДЕРОВ (сохранение по ходу)")
         print("="*60)
         
-        page = 1
-        total_new = 0
+        page: int = 1
+        total_new: int = 0
         
         while True:
             if max_pages and page > max_pages:
                 print(f"🏁 Достигнут лимит страниц ({max_pages})")
                 break
             
+            # self.parse_page(page)
+
+
             print(f"\n--- Страница {page} ---")
             
             page_tenders, soup = self.parse_page(page)
@@ -360,7 +375,7 @@ class TenderParser:
 
 def Parse_gos_zakupki():
     parser = TenderParser('tenders.xlsx')
-    
+
     while True:
         print("\n" + "="*60)
         print("ПАРСЕР ТЕНДЕРОВ (сохранение по ходу)")
