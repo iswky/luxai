@@ -66,98 +66,124 @@
         <div class="workspace-header">
             <div>
                 <div class="section-kicker">Parsed Products</div>
-                <h2>Выбор поставщиков</h2>
+                <h2>Позиции закупки</h2>
             </div>
 
-            <!-- <div class="header-chip">
-                Выбери “по кайфу”
-            </div> -->
+            <div class="header-chip">
+                {{ application.items|length }} позиций
+            </div>
         </div>
 
         <div class="parsed-items">
             {% for item in application.items %}
-                <article class="parsed-item-card">
-                    <div class="parsed-left">
+                <article class="parsed-item-card parsed-item-card-clean">
+                    <div class="parsed-left parsed-left-clean">
                         <div class="item-index">
-                            {{ forloop.counter }}
+                            {{ item.position_number }}
                         </div>
 
-                        <div>
-                            <h3>{{ item.name }}</h3>
+                        <div class="item-main">
+                            <div class="item-title-row">
+                                <div>
+                                    <div class="item-category">
+                                        {{ item.category }}
+                                    </div>
 
-                            <div class="item-tags">
-                                <span>{{ item.quantity }}</span>
-                                <span>Бюджет: {{ item.budget }}</span>
+                                    <h3>{{ item.name }}</h3>
+                                </div>
+
+                                <div class="item-qty">
+                                    <span>{{ item.quantity }}</span>
+                                    <small>{{ item.unit }}</small>
+                                </div>
                             </div>
 
-                            <p>
+                            <p class="item-summary">
                                 {{ item.requirements }}
                             </p>
+
+                            {% if item.key_requirements %}
+                                <div class="requirements-grid">
+                                    {% for req in item.key_requirements %}
+                                        <div class="requirement-pill">
+                                            <span>{{ req.label }}</span>
+                                            <strong>{{ req.value }}</strong>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
 
-                    <div class="shops-column">
+                    <div class="shops-column shops-column-clean">
                         <div class="shops-title">
                             Где купить
                         </div>
 
-                        {% for shop in item.shops %}
-                            <div
-                                class="shop-card {% if selected_shops|get_item:item.id == shop.id %}shop-card-selected{% endif %}"
-                            >
-                                <div>
-                                    <h4>{{ shop.name }}</h4>
+                        {% if item.shops %}
+                            {% for shop in item.shops %}
+                                <div
+                                    class="shop-card {% if selected_shops|get_item:item.id == shop.id %}shop-card-selected{% endif %}"
+                                >
+                                    <div>
+                                        <h4>{{ shop.name }}</h4>
 
-                                    <div class="shop-meta">
-                                        <span>Цена: {{ shop.price }}</span>
-                                        <span>Доставка: {{ shop.delivery }}</span>
-                                        <span>Рейтинг: {{ shop.rating }}</span>
+                                        <div class="shop-meta">
+                                            <span>Цена: {{ shop.price }}</span>
+                                            <span>{{ shop.delivery }}</span>
+                                            <span>Рейтинг: {{ shop.rating }}</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="shop-buy">
+                                        <strong>{{ shop.price }}</strong>
+
+                                        <form
+                                            method="post"
+                                            action="{% url 'select_shop' application.id %}"
+                                        >
+                                            {% csrf_token %}
+
+                                            <input
+                                                type="hidden"
+                                                name="item_id"
+                                                value="{{ item.id }}"
+                                            >
+
+                                            <input
+                                                type="hidden"
+                                                name="shop_id"
+                                                value="{{ shop.id }}"
+                                            >
+
+                                            <button
+                                                type="submit"
+                                                class="btn-neon {% if selected_shops|get_item:item.id == shop.id %}btn-selected{% else %}btn-neon-secondary{% endif %} btn-shop"
+                                            >
+                                                {% if selected_shops|get_item:item.id == shop.id %}
+                                                    По кайфу ✓
+                                                {% else %}
+                                                    Выбрать
+                                                {% endif %}
+                                            </button>
+                                        </form>
+
+                                        <a
+                                            href="{{ shop.url }}"
+                                            target="_blank"
+                                            class="shop-link"
+                                        >
+                                            Открыть сайт
+                                        </a>
                                     </div>
                                 </div>
-
-                                <div class="shop-buy">
-                                    <strong>{{ shop.price }}</strong>
-
-                                    <form
-                                        method="post"
-                                        action="{% url 'select_shop' application.id %}"
-                                    >
-                                        {% csrf_token %}
-
-                                        <input
-                                            type="hidden"
-                                            name="item_id"
-                                            value="{{ item.id }}"
-                                        >
-
-                                        <input
-                                            type="hidden"
-                                            name="shop_id"
-                                            value="{{ shop.id }}"
-                                        >
-
-                                        <button
-                                            type="submit"
-                                            class="btn-neon {% if selected_shops|get_item:item.id == shop.id %}btn-selected{% else %}btn-neon-secondary{% endif %} btn-shop"
-                                        >
-                                            {% if selected_shops|get_item:item.id == shop.id %}
-                                                Выбран ✓
-                                            {% else %}
-                                                Выбрать
-                                            {% endif %}
-                                        </button>
-                                    </form>
-
-                                    <a
-                                        href="{{ shop.url }}"
-                                        target="_blank"
-                                        class="shop-link"
-                                    >
-                                        Открыть сайт
-                                    </a>
-                                </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-offers">
+                                Пока нет найденных поставщиков.
+                                Нужно заполнить таблицу products или сделать поиск “где купить”.
                             </div>
-                        {% endfor %}
+                        {% endif %}
                     </div>
                 </article>
             {% endfor %}
