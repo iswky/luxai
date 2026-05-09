@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 set -e
-
 echo "=== Проверяю, что docker-compose.yml рядом ==="
 
 if [ ! -f "docker-compose.yml" ]; then
@@ -11,9 +10,7 @@ if [ ! -f "docker-compose.yml" ]; then
 fi
 
 echo "=== Поднимаю PostgreSQL через sudo docker compose ==="
-
 sudo docker compose up -d db
-
 echo "=== Жду запуск PostgreSQL ==="
 
 until sudo docker exec postgres pg_isready -U user -d appdb >/dev/null 2>&1; do
@@ -22,9 +19,7 @@ until sudo docker exec postgres pg_isready -U user -d appdb >/dev/null 2>&1; do
 done
 
 echo "✅ PostgreSQL запущен"
-
 echo "=== Создаю тестовую структуру БД и данные ==="
-
 sudo docker exec -i postgres psql -U user -d appdb <<'SQL'
 CREATE SCHEMA IF NOT EXISTS r_luxai;
 
@@ -491,37 +486,6 @@ VALUES
 SQL
 
 echo "✅ Таблицы и тестовые данные созданы"
-
-echo "=== Обновляю backend/webui/db.py под твой docker-compose ==="
-
-cat > backend/webui/db.py <<'PY'
-# webui/db.py
-
-import psycopg2
-from psycopg2.extras import RealDictCursor
-
-
-DB_CONFIG = {
-    # Если Django запускаешь локально через python manage.py runserver:
-    'host': 'localhost',
-    'port': '5432',
-
-    # Значения из docker-compose.yml
-    'dbname': 'appdb',
-    'user': 'user',
-    'password': 'pass',
-}
-
-
-def get_connection():
-    return psycopg2.connect(
-        **DB_CONFIG,
-        cursor_factory=RealDictCursor,
-    )
-PY
-
-echo "✅ backend/webui/db.py обновлён"
-
 echo "=== Проверяю количество данных ==="
 
 sudo docker exec -i postgres psql -U user -d appdb <<'SQL'
