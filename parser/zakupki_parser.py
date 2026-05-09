@@ -107,62 +107,88 @@ class TenderParser:
         
         return result
     
+    def _find_empty_rows(self, ws):
+        """
+        Находит все пустые строки в таблице.
+        Возвращает список номеров строк, где первая колонка пустая.
+        """
+        empty_rows = []
+        max_row = ws.max_row
+        
+        # Если в таблице только заголовки, нет пустых строк
+        if max_row <= 1:
+            return []
+        
+        # Собираем все номера строк с пустой первой колонкой
+        for row in range(2, max_row + 1):
+            if ws.cell(row=row, column=1).value is None:
+                empty_rows.append(row)
+            else:
+                # Проверяем, не пустая ли строка (все колонки пустые)
+                is_completely_empty = True
+                for col in range(1, 12):  # Проверяем все 11 колонок
+                    if ws.cell(row=row, column=col).value is not None:
+                        is_completely_empty = False
+                        break
+                if is_completely_empty:
+                    empty_rows.append(row)
+        
+        return sorted(empty_rows)  # Сортируем для последовательного заполнения
+
+
     def _append_to_excel(self, new_tenders):
-        """Добавляет новые тендеры в Excel"""
+        """Добавляет новые тендеры в Excel, заполняя пустые строки в начале"""
         try:
-            # Открываем или создаем файл
+            # Открываем файл
             if os.path.exists(self.excel_file):
                 wb = load_workbook(self.excel_file)
                 ws = wb.active
             else:
-                wb = Workbook()
+                wb = self._create_excel_file()
                 ws = wb.active
-                ws.title = "Тендеры"
-                headers = ['Номер тендера', 'Название/Объект закупки', 'Ссылка', 
-                          'Цена (руб)', 'ФЗ', 'Окончание подачи заявок', 
-                          'Заказчик', 'Дата добавления', 'Город', 'Файлы скачаны', 'Файлы отфильтрованы']
-                ws.append(headers)
-                
-                header_font = Font(bold=True, size=11, color="FFFFFF")
-                header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-                for col in range(1, len(headers) + 1):
-                    cell = ws.cell(row=1, column=col)
-                    cell.font = header_font
-                    cell.fill = header_fill
-                    cell.alignment = Alignment(horizontal="center")
-                
-                ws.column_dimensions['A'].width = 25
-                ws.column_dimensions['B'].width = 70
-                ws.column_dimensions['C'].width = 60
-                ws.column_dimensions['D'].width = 18
-                ws.column_dimensions['E'].width = 10
-                ws.column_dimensions['F'].width = 20
-                ws.column_dimensions['G'].width = 50
-                ws.column_dimensions['H'].width = 20
-                ws.column_dimensions['I'].width = 40
-                ws.column_dimensions['J'].width = 20
-                ws.column_dimensions['K'].width = 20
             
-            # Добавляем данные
-            next_row = ws.max_row + 1
+            # Находим пустые строки
+            empty_rows = self._find_empty_rows(ws)
+            
+            # Создаем очередь из пустых строк
+            from collections import deque
+            empty_rows_queue = deque(empty_rows)
+            
+            # Подготавливаем данные для добавления
+            added_count = 0
+            next_new_row = ws.max_row + 1
+            
             for number, info in new_tenders.items():
-                ws.cell(row=next_row, column=1, value=number)
-                ws.cell(row=next_row, column=2, value=info['name'])
-                ws.cell(row=next_row, column=3, value=info['url'])
-                ws.cell(row=next_row, column=4, value=info.get('price', 'Не указана'))
-                ws.cell(row=next_row, column=5, value=info.get('law', 'Не указан'))
-                ws.cell(row=next_row, column=6, value=info.get('end_date', 'Не указана'))
-                ws.cell(row=next_row, column=7, value=info.get('customer', 'Не указан'))
-                ws.cell(row=next_row, column=8, value=info['first_seen'])
-                ws.cell(row=next_row, column=10, value='False')
-                ws.cell(row=next_row, column=10).fill = self.red_fill
-                ws.cell(row=next_row, column=11, value='False')
-                ws.cell(row=next_row, column=11).fill = self.red_fill
-                next_row += 1
+                # Берем следующую пустую строку или создаем новую
+                if empty_rows_queue:
+                    target_row = empty_rows_queue.popleft()
+                    location = f"пустую строку {target_row}"
+                else:
+                    target_row = next_new_row
+                    next_new_row += 1
+                    location = f"новую строку {target_row}"
+                
+                # Записываем данные
+                ws.cell(row=target_row, column=1, value=number)
+                ws.cell(row=target_row, column=2, value=info['name'])
+                ws.cell(row=target_row, column=3, value=info['url'])
+                ws.cell(row=target_row, column=4, value=info.get('price', 'Не указана'))
+                ws.cell(row=target_row, column=5, value=info.get('law', 'Не указан'))
+                ws.cell(row=target_row, column=6, value=info.get('end_date', 'Не указана'))
+                ws.cell(row=target_row, column=7, value=info.get('customer', 'Не указан'))
+                ws.cell(row=target_row, column=8, value=info['first_seen'])
+                ws.cell(row=target_row, column=9, value=info.get('city', 'Не указан'))
+                ws.cell(row=target_row, column=10, value='False')
+                ws.cell(row=target_row, column=10).fill = self.red_fill
+                ws.cell(row=target_row, column=11, value='False')
+                ws.cell(row=target_row, column=11).fill = self.red_fill
+                
+                added_count += 1
+                print(f"   ➕ Тендер {number} добавлен в {location}")
             
             wb.save(self.excel_file)
-            print(f"💾 Сохранено {len(new_tenders)} новых тендеров (всего в базе: {len(self.existing_numbers)})")
-            return len(new_tenders)
+            print(f"💾 Добавлено {added_count} тендеров (пустых строк использовано: {len(empty_rows[:added_count])})")
+            return added_count
             
         except Exception as e:
             print(f"❌ Ошибка сохранения: {e}")
