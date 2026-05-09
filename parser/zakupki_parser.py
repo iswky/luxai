@@ -40,21 +40,7 @@ class TenderParser:
         
         self.base_url = 'https://zakupki.gov.ru/epz/order/extendedsearch/results.html'
         
-        self.base_params = {
-            'morphology': 'on',
-            'search-filter': 'Дате размещения',
-            'sortDirection': 'false',
-            'recordsPerPage': '_10',
-            'showLotsInfoHidden': 'false',
-            'sortBy': 'PUBLISH_DATE',
-            'fz44': 'on',
-            'fz223': 'on',
-            'af': 'on',
-            'currencyIdGeneral': '-1',
-            'okpd2IdsWithNested': 'on',
-            'okpd2Ids': '8873938,8874157,8874056,8873907,8874087,8874160,8874159,8874058,8874059,8874055,8874158,8873937,8873908,8873906,8874054,8874060,8874061',
-            'okpd2IdsCodes': '26,26.1,26.2,26.3,26.5,26.7,26.8'
-        }
+        self.base_params = self.load_filters_from_file("./params.txt")
         
         # Загружаем существующие номера при запуске (один раз)
         self.existing_numbers = self.load_existing_tenders()
@@ -63,6 +49,35 @@ class TenderParser:
         print("🎯 ПАРСЕР ЗАПУЩЕН")
         print("="*60)
     
+    def load_filters_from_file(self, file_path: str) -> Dict[str, str]:
+        """
+        Считывает фильтры из txt файла в формате key=value
+        
+        Returns:
+            Dict[str, str]: Словарь параметров
+        """
+        params: Dict[str, str] = {}
+        
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    # Пропускаем пустые строки и комментарии
+                    if not line or line.startswith('#'):
+                        continue
+                    
+                    # Разделяем по первому знаку равенства
+                    if '=' in line:
+                        key, value = line.split('=', 1)
+                        params[key.strip()] = value.strip()
+                        
+        except FileNotFoundError:
+            print(f"❌ Файл {file_path} не найден")
+        except Exception as e:
+            print(f"❌ Ошибка при чтении файла: {e}")
+        
+        return params
+
     def load_existing_tenders(self):
         """Загружает существующие номера тендеров из Excel"""
         existing_numbers = set()
@@ -416,6 +431,7 @@ class TenderParser:
         return total_new
 
 def Parse_gos_zakupki():
+
     parser = TenderParser('tenders.xlsx')
 
     while True:
@@ -455,3 +471,6 @@ def Parse_gos_zakupki():
         
         else:
             print("❌ Неверный выбор")
+
+if __name__ == "__main__":
+    Parse_gos_zakupki()
