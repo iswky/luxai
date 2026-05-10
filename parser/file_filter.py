@@ -201,12 +201,54 @@ def convert_to_pdf(path: str, files: List[str]):
         print(f"\n❌ Не удалось конвертировать: {', '.join(failed_files)}")
 
 # Вспомогательные функции для разных форматов:
-def convert_word_to_pdf(input_path: str, output_path: str):
-    """Конвертирует Word документ в PDF"""
-    from docx2pdf import convert
+def convert_word_to_pdf(input_path: str, output_path: str = None):
+    """
+    Конвертирует Word документ в PDF
+    
+    Args:
+        input_path: путь к исходному .docx файлу
+        output_path: путь для сохранения .pdf файла (опционально)
+    """
 
-    # Конвертация одного файла
-    convert(input_path)
+    import subprocess
+
+    # Если output_path не указан, создаем рядом с исходным файлом
+    if output_path is None:
+        output_path = os.path.splitext(input_path)[0] + '.pdf'
+    
+    # Получаем директорию для output
+    output_dir = os.path.dirname(output_path)
+    if not output_dir:
+        output_dir = '.'
+    
+    # Конвертация через LibreOffice
+    cmd = [
+        'libreoffice',
+        '--headless',           # Без графического интерфейса
+        '--convert-to', 'pdf',  # Конвертация в PDF
+        '--outdir', output_dir, # Выходная директория
+        input_path              # Входной файл
+    ]
+    
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        
+        # LibreOffice сохраняет файл с тем же именем в output_dir
+        generated_pdf = os.path.join(output_dir, os.path.basename(input_path).replace('.docx', '.pdf'))
+        
+        # Если нужно переименовать или переместить
+        if generated_pdf != output_path:
+            os.rename(generated_pdf, output_path)
+        
+        print(f"✅ Конвертация успешна: {output_path}")
+        return output_path
+        
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Ошибка конвертации: {e}")
+        print(f"Stderr: {e.stderr}")
+        raise
+    except FileNotFoundError:
+        raise Exception("LibreOffice не установлен. Установите: sudo apt install libreoffice")
 
 def convert_excel_to_pdf(input_path: str, output_path: str):
     """
