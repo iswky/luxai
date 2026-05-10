@@ -1,4 +1,5 @@
 from bs4 import BeautifulSoup
+from bs4 import Tag
 from urllib.parse import urljoin
 from typing import List, Dict, Optional, Tuple, Any
 import requests
@@ -153,7 +154,7 @@ def download_file(url: str, filename: str = "file.html", tender_number: str = "u
         print(f"❌ Ошибка скачивания {filename}: {e}")
         raise
 
-def extract_file_links(html_content: str, base_url: str = 'https://zakupki.gov.ru') -> List[Dict[str, Optional[str]]]:
+def extract_file_links_44FZ(html_content: str, base_url: str = 'https://zakupki.gov.ru') -> List[Dict[str, Optional[str]]]:
     
     soup: BeautifulSoup = BeautifulSoup(html_content, 'html.parser')
     files: List[Dict[str, Optional[str]]] = []
@@ -188,54 +189,144 @@ def extract_file_links(html_content: str, base_url: str = 'https://zakupki.gov.r
 
     return files
 
-def read_tenders_info(filename: str) -> List[Tuple[Any, Any, int]]:
-    wb: Workbook = load_workbook(filename)
-    ws: Worksheet = wb.active
+def extract_file_links_223FZ(url: str, base_url: str = 'https://zakupki.gov.ru') -> List[Dict[str, Optional[str]]]:
 
-    pairs: List[Tuple[Any, Any, int]] = []
-    for row in range(2, ws.max_row + 1):
-        val_1: Any = ws.cell(row=row, column=1).value[2:]
-        val_10: Any = ws.cell(row=row, column=10).value
-        pairs.append((val_1, val_10, row))
+    from playwright.sync_api import sync_playwright
 
-    return pairs
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+        
+        page.goto(url)
+
+        # ✅ Ждём внутри блока
+        try:
+            page.wait_for_selector("a[href*='download.html']", timeout=15000)
+            html = page.content()
+            browser.close()
+            # Продолжаем обработку HTML
+        except Exception:
+            print(f"⚠️ Таймаут: элемент 'a[href*='download.html']' не найден на {url}")
+            browser.close()
+            return []
+
+    # ✅ Используем html, который получили
+    soup: BeautifulSoup = BeautifulSoup(html, 'html.parser')
+    files: List[Dict[str, Optional[str]]] = []
+
+    section: Tag = soup.find('section', class_="card-attachments")
+
+    if not section:
+        print("❌ Секция \"card-attachments\" не найдена")
+        return []
+
+    counts = section.find_all('span', class_=lambda x: x and 'count' in x.split())
+
+    if not counts:
+        print("❌ Секции \"count \" не найдена")
+        return []
+
+    for count in counts:
+        link = count.find('a', string=lambda text: text and 'download.html')
+
+        if link:
+
+            from html import unescape
+
+            file_url = "https://zakupki.gov.ru" + link.get('href')
+            file_name: str = link.text.strip()
+
+            tooltip = link.get('data-tooltip')
+            tooltip_decoded = unescape(tooltip)
+            file_name = BeautifulSoup(tooltip_decoded, 'html.parser').find('span', class_='custom-tooltiptext').text
+
+            print(file_url)
+            print(file_name)
+            print('\n')
+            
+            file_info = {
+                'url': file_url,
+                'title': file_name
+            }
+
+            files.append(file_info)
+        else:
+            print("filelink not found")
+
+    return files
+
+def get_link_to_file_page(tender_link: str) -> str:
+
+    response = requests.get(tender_link, headers = headers)
+
+    soup: BeautifulSoup = BeautifulSoup(response.text, 'html.parser')
+    files: List[Dict[str, Optional[str]]] = []
+
+    section: List = soup.find('div', class_= "tabsNav d-flex")
+
+    if not section:
+        print("❌ Секция tabsNav d-flex не найдена")
+        return ""
+    
+
+    link: Optional[Tag] = section.find('a', href=lambda h: h and 'documents.html' in h)
+
+    if link:
+        docs_page_url: str = link.get('href', '')
+
+        print(docs_page_url)
+        print('\n')
+
+        return docs_page_url
+
+    return ""
 
 def download_tenders_files():
-    tenders_info: List[Tuple[Any, Any, int]] = read_tenders_info("tenders.xlsx")
-
     wb: Workbook = load_workbook("tenders.xlsx")
     ws: Worksheet = wb.active
 
     i = 2
-    for number, flag, row_num in tenders_info:
-        url = 'https://zakupki.gov.ru/epz/order/notice/ea20/view/documents.html?regNumber=' + number
+    for row in range(2, ws.max_row + 1):
+        tender_id: Any = ws.cell(row=row, column=1).value[2:]
+        tender_link: str = ws.cell(row=row, column=3).value
+        FZ: str = ws.cell(row=row, column=5).value
+        Files_download_flag: Any = ws.cell(row=row, column=10).value
 
-        print("сайт откуда скачиваем: ", url)
+        if Files_download_flag == "True":
+            continue
 
-        if (flag == 'False'):
-            print("скачиваем файлы для тендера:", number)
+        url: str = "https://zakupki.gov.ru" + get_link_to_file_page(tender_link)
+
+        print
+
+        print(url)
+        print(f"Сайт откуда скачиваем: {url}")
+        print(f"скачиваем файлы для тендера: {tender_id}")
+
+        if FZ == "44-ФЗ":
+            # Получаем HTML
             response = requests.get(url, headers = headers)
-
-            # Получаем HTML как строку
             html_text: str = response.text
+            files: List[Dict[str, Optional[str]]] = []
+            files = extract_file_links_44FZ(html_text)
+        elif FZ == "223-ФЗ":
+            files = extract_file_links_223FZ(url)
 
-            files: List[Dict[str, Optional[str]]] = extract_file_links(html_text)
+        if not files:
+            continue
 
-            if not files:
-                continue
-
-            try:
-                for file_info in files:
-                    download_file(file_info['url'], file_info['title'], number)
-                ws.cell(row=row_num, column=10).value = 'True'
-                ws.cell(row=row_num, column=10).fill = green_fill
-                wb.save("tenders.xlsx")
-                
-            except requests.RequestException as e:
-                print()
+        try:
+            for file_info in files:
+                download_file(file_info['url'], file_info['title'], tender_id)
+            ws.cell(row=row, column=10).value = 'True'
+            ws.cell(row=row, column=10).fill = green_fill
+            wb.save("tenders.xlsx")
+            
+        except requests.RequestException as e:
+            print()
         
         i += 1
 
 
 if __name__ == "__main__":
-    unarchive_file("./tenders_files/Книга1.zip")
+    download_tenders_files()
