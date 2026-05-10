@@ -29,6 +29,9 @@ def tender_validator():
         tender_id: str = ws.cell(row=row, column=1).value[2:]
         date_string: str = ws.cell(row=row, column=6).value
 
+        if date_string == "Не указана":
+            return
+
         given_date = datetime.strptime(date_string, "%d.%m.%Y").date()
 
         today = datetime.now().date()

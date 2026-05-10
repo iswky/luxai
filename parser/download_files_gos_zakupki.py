@@ -193,67 +193,73 @@ def extract_file_links_223FZ(url: str, base_url: str = 'https://zakupki.gov.ru')
 
     from playwright.sync_api import sync_playwright
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-        
-        page.goto(url)
+    try:
 
-        # ✅ Ждём внутри блока
-        try:
-            page.wait_for_selector("a[href*='download.html']", timeout=15000)
-            html = page.content()
-            browser.close()
-            # Продолжаем обработку HTML
-        except Exception:
-            print(f"⚠️ Таймаут: элемент 'a[href*='download.html']' не найден на {url}")
-            browser.close()
+        with sync_playwright() as p:
+            browser = p.chromium.launch(headless=True)
+            page = browser.new_page()
+            
+            page.goto(url)
+
+            # ✅ Ждём внутри блока
+            try:
+                page.wait_for_selector("a[href*='download.html']", timeout=15000)
+                html = page.content()
+                browser.close()
+                # Продолжаем обработку HTML
+            except Exception:
+                print(f"⚠️ Таймаут: элемент 'a[href*='download.html']' не найден на {url}")
+                browser.close()
+                return []
+
+        # ✅ Используем html, который получили
+        soup: BeautifulSoup = BeautifulSoup(html, 'html.parser')
+        files: List[Dict[str, Optional[str]]] = []
+
+        section: Tag = soup.find('section', class_="card-attachments")
+
+        if not section:
+            print("❌ Секция \"card-attachments\" не найдена")
             return []
 
-    # ✅ Используем html, который получили
-    soup: BeautifulSoup = BeautifulSoup(html, 'html.parser')
-    files: List[Dict[str, Optional[str]]] = []
+        counts = section.find_all('span', class_=lambda x: x and 'count' in x.split())
 
-    section: Tag = soup.find('section', class_="card-attachments")
+        if not counts:
+            print("❌ Секции \"count \" не найдена")
+            return []
 
-    if not section:
-        print("❌ Секция \"card-attachments\" не найдена")
+        for count in counts:
+            link = count.find('a', string=lambda text: text and 'download.html')
+
+            if link:
+
+                from html import unescape
+
+                file_url = "https://zakupki.gov.ru" + link.get('href')
+                file_name: str = link.text.strip()
+
+                tooltip = link.get('data-tooltip')
+                tooltip_decoded = unescape(tooltip)
+                file_name = BeautifulSoup(tooltip_decoded, 'html.parser').find('span', class_='custom-tooltiptext').text
+
+                print(file_url)
+                print(file_name)
+                print('\n')
+                
+                file_info = {
+                    'url': file_url,
+                    'title': file_name
+                }
+
+                files.append(file_info)
+            else:
+                print("filelink not found")
+
+        return files
+    
+    except Exception as e:
+        print(f"Ошибка при загрузке {url}: {e}")
         return []
-
-    counts = section.find_all('span', class_=lambda x: x and 'count' in x.split())
-
-    if not counts:
-        print("❌ Секции \"count \" не найдена")
-        return []
-
-    for count in counts:
-        link = count.find('a', string=lambda text: text and 'download.html')
-
-        if link:
-
-            from html import unescape
-
-            file_url = "https://zakupki.gov.ru" + link.get('href')
-            file_name: str = link.text.strip()
-
-            tooltip = link.get('data-tooltip')
-            tooltip_decoded = unescape(tooltip)
-            file_name = BeautifulSoup(tooltip_decoded, 'html.parser').find('span', class_='custom-tooltiptext').text
-
-            print(file_url)
-            print(file_name)
-            print('\n')
-            
-            file_info = {
-                'url': file_url,
-                'title': file_name
-            }
-
-            files.append(file_info)
-        else:
-            print("filelink not found")
-
-    return files
 
 def get_link_to_file_page(tender_link: str) -> str:
 
