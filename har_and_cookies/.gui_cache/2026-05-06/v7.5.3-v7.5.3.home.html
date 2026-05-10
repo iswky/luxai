@@ -1,0 +1,241 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>G4F - Framework</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="https://g4f.dev/dist/img/g4f-180x180.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://g4f.dev/dist/img/g4f-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://g4f.dev/dist/img/g4f-16x16.png">
+    <link rel="manifest" href="https://g4f.dev/dist/img/site.webmanifest">
+    <style>
+        :root {
+            --colour-1: #000000;
+            --colour-2: #ccc;
+            --colour-3: #e4d4ff;
+            --colour-4: #f0f0f0;
+            --colour-5: #181818;
+            --colour-6: #242424;
+            --accent: #8b3dff;
+            --gradient: #1a1a1a;
+            --background: #16101b;
+            --size: 70vw;
+            --top: 50%;
+            --blur: 40px;
+            --opacity: 0.6;
+        }
+
+        @import url("https://fonts.googleapis.com/css2?family=Inter:wght@100;200;300;400;500;600;700;800;900&display=swap");
+
+        /* Body and text color */
+        body {
+            background: var(--background);
+            color: var(--colour-3);
+            font-family: "Inter", sans-serif;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-weight: bold;
+        }
+
+        /* Container for the main content */
+        .container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            text-align: center;
+            z-index: 1;
+            transition: transform 0.25s ease-in;
+        }
+
+        .container.slide {
+            transform: translateX(-100%);
+            transition: transform 0.15s ease-out;
+        }
+
+        .slide-button {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: var(--colour-4);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 6px 8px;
+        }
+
+        header {
+            font-size: 3rem;
+            text-transform: uppercase;
+            margin: 20px;
+            color: var(--colour-4);
+        }
+
+        iframe {
+            background: transparent;
+            width: 100%;
+            border: none;
+        }
+
+        #background {
+            height: 100%;
+            position: absolute;
+            object-fit: cover;
+            object-position: center;
+            width: 100%;
+            background: black;
+        }
+
+        .container * {
+            z-index: 2;
+        }
+
+        .description {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            color: var(--colour-2);
+        }
+
+        .button {
+            background-color: var(--accent);
+            color: var(--colour-3);
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-top: 15px;
+            width: 100%;
+            max-width: 400px;
+            font-weight: bold;
+            text-decoration: none;
+            white-space: nowrap;
+        }
+
+        .button:hover {
+            background-color: #7a2ccd;
+        }
+
+        .button-container {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 0.9rem;
+            color: var(--colour-2);
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+    <link rel="stylesheet" href="https://g4f.dev/dist/css/all.min.css">
+    <script src="https://g4f.dev/dist/js/framework.js" defer></script>
+</head>
+<body class="translate">
+    <iframe id="background" src="background.html"></iframe>
+
+    <button class="slide-button">
+        <i class="fa-solid fa-arrow-left"></i>
+    </button>
+
+    <!-- Main Content -->
+    <div class="container">
+        <header>
+            G4F - Chat
+        </header>
+        <div class="description">
+            <span>Welcome to the G4F Web UI!</span><br>
+            <span>Your AI assistant is ready to assist you.</span>
+        </div>
+
+        <div class="connected">
+            <p><strong>Connected to:</strong><span> </span><span id="connect_status">...</span></p>
+        </div>
+
+        <!-- Buttons -->
+        <div class="button-container">
+            <a href="chat/" class="button">Start Chat</a>
+            <a href="#" class="button" id="login-btn">Login</a>
+        </div>
+        <p id="user-status" class="hidden" style="margin-top: 15px; color: var(--colour-2);"></p>
+        <a href="#" class="button hidden" id="logout-btn" style="max-width: 200px;">Logout</a>
+        <script type="module">
+            // Define appStorage for consistent storage access
+            const appStorage = window.localStorage || {
+                setItem: (key, value) => self[key] = value,
+                getItem: (key) => self[key],
+                removeItem: (key) => delete self[key],
+                length: 0
+            };
+
+            const loginBtn = document.getElementById("login-btn");
+            const logoutBtn = document.getElementById("logout-btn");
+            const userStatus = document.getElementById("user-status");
+
+            localStorage.removeItem("backendUrl");
+            framework.connectToBackend(document.getElementById("connect_status"));
+
+            // Check if user is logged in
+            const storedApiKey = appStorage.getItem("session_token");
+            if (storedApiKey) {
+                loginBtn.classList.add("hidden");
+                logoutBtn.classList.remove("hidden");
+                userStatus.classList.remove("hidden");
+                userStatus.textContent = framework.translate("You are logged in");
+            }
+
+            // Login button - redirect to members with return URL
+            loginBtn.addEventListener("click", (e) => {
+                e.preventDefault();
+                const returnUrl = encodeURIComponent(location.origin + '/chat/');
+                window.location.href = `https://g4f.dev/members?redirect=${returnUrl}`;
+            });
+
+            // Logout button
+            logoutBtn.addEventListener("click", (e) => {
+                e.preventDefault();
+                appStorage.removeItem("session_token");
+                loginBtn.classList.remove("hidden");
+                logoutBtn.classList.add("hidden");
+                userStatus.classList.add("hidden");
+            });
+        </script>
+
+        <!-- Footer -->
+        <div class="footer">
+            <p>&copy; 2026 G4F. All Rights Reserved.</p>
+            <p>Powered by the G4F framework</p>
+        </div>
+    </div>
+    <script>
+        (async () => {
+            const container = document.querySelector('.container');
+            const button = document.querySelector('.slide-button');
+            const slideIcon = button.querySelector('i');
+            button.onclick = () => {
+                if (container.classList.contains('slide')) {
+                    container.classList.remove('slide');
+                    slideIcon.classList.remove('fa-arrow-right');
+                    slideIcon.classList.add('fa-arrow-left');
+                } else {
+                    container.classList.add('slide');
+                    slideIcon.classList.remove('fa-arrow-left');
+                    slideIcon.classList.add('fa-arrow-right');
+                }
+            }
+        })();
+    </script>
+<template>You are logged in</template>
+<template>Logged in with Hugging Face</template>
+</body>
+</html>
