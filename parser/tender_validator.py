@@ -3,6 +3,7 @@ from openpyxl.workbook.workbook import Workbook
 from openpyxl.styles import PatternFill
 from openpyxl import load_workbook
 from datetime import datetime
+import os
 
 
 
@@ -18,6 +19,9 @@ def clear_tender(row: int):
     
 
 def tender_validator():
+    if not os.path.exists("./tenders.xlsx"):
+        return
+
     wb: Workbook = load_workbook("tenders.xlsx")
     ws: Worksheet = wb.active
 

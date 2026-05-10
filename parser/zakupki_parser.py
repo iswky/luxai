@@ -261,12 +261,15 @@ class TenderParser:
     def parse_page(self: TenderParser, page_number: int = 1):
         """Парсит страницу"""
 
-        params = self.base_params.copy()
+        # params = self.base_params.copy()
+        params: Dict[str, str] = {}
         params['pageNumber'] = str(page_number)
         
+        url = "https://zakupki.gov.ru/epz/order/extendedsearch/results.html?morphology=on&search-filter=+%D0%94%D0%B0%D1%82%D0%B5+%D1%80%D0%B0%D0%B7%D0%BC%D0%B5%D1%89%D0%B5%D0%BD%D0%B8%D1%8F&sortDirection=false&recordsPerPage=_10&showLotsInfoHidden=false&sortBy=PUBLISH_DATE&fz44=on&fz223=on&af=on&currencyIdGeneral=-1&okpd2Ids=8874056%2C8874054%2C8874060%2C8874055%2C8873906%2C8874061%2C8874058%2C8873863&okpd2IdsCodes=26.3%2C26.1%2C26.7%2C26.2%2C26%2C26.8%2C26.5%2CC"
+
         try:
             print(f"📥 Загрузка страницы {page_number}...")
-            response = requests.get(self.base_url, headers=self.headers, params=params, timeout=15)
+            response = requests.get(url, headers=self.headers, params=params, timeout=15)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
             return self.extract_tenders(soup), soup
@@ -294,7 +297,7 @@ class TenderParser:
                     continue
                 
                 number = link.text.strip()
-                url = 'https://zakupki.gov.ru' + link.get('href')
+                url = link.get('href')
                 
                 # Название
                 name_div = block.find('div', class_='registry-entry__body-value')
@@ -400,9 +403,6 @@ class TenderParser:
                 print(f"🏁 Достигнут лимит страниц ({max_pages})")
                 break
             
-            # self.parse_page(page)
-
-
             print(f"\n--- Страница {page} ---")
             
             page_tenders, soup = self.parse_page(page)
@@ -431,7 +431,6 @@ class TenderParser:
         return total_new
 
 def Parse_gos_zakupki():
-
     parser = TenderParser('tenders.xlsx')
 
     while True:
@@ -473,4 +472,7 @@ def Parse_gos_zakupki():
             print("❌ Неверный выбор")
 
 if __name__ == "__main__":
+    
+
+
     Parse_gos_zakupki()
