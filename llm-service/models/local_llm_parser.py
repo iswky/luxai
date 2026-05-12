@@ -15,7 +15,7 @@
     parser = LocalLLMParser(model="qwen2.5:7b-instruct")
     result = parser.parse_pdf("tender.pdf")
 """
-
+import re
 import json
 import logging
 from pathlib import Path
@@ -46,13 +46,6 @@ class LocalLLMParser:
     - llama3.1:8b-instruct   — универсальный
     - phi3:mini              — самый лёгкий (4GB RAM)
     """
-    
-    RECOMMENDED_MODELS = {
-        "best": "qwen2.5:7b-instruct",
-        "fast": "mistral:7b-instruct", 
-        "light": "phi3:mini",
-    }
-    
     def __init__(
         self,
         model: str = "qwen2.5:7b-instruct",
@@ -66,23 +59,6 @@ class LocalLLMParser:
         
         # Передаем текст промптов напрямую
         self.set_prompt(system_prompt, user_prompt)
-        
-        # Проверяем доступность модели
-        self._check_model()
-    
-    def _check_model(self) -> None:
-        """Проверяет что модель скачана."""
-        try:
-            models = ollama.list()
-            model_names = [m['name'] for m in models.get('models', [])]
-            
-            if not any(self.model in name for name in model_names):
-                logger.warning(
-                    f"Модель {self.model} не найдена.\n"
-                    f"Скачайте: ollama pull {self.model}"
-                )
-        except Exception as e:
-            logger.error(f"Не удалось проверить модели Ollama: {e}")
     
     def set_prompt(self, system_text: str, user_text: str) -> None:
         """Устанавливает текстовый промпт пользователя."""
@@ -201,26 +177,52 @@ class LocalLLMParser:
         return all_results
     
     def _parse_json(self, raw: str) -> list[dict] | dict:
-        """Извлекает JSON из ответа модели."""
-        clean = raw.strip()
+        """Извлекает JSON и исправляет математические ошибки модели."""
+        # 1. Находим границы массива или объекта
+        start_idx = raw.find('[')
+        if start_idx == -1: start_idx = raw.find('{')
+        end_idx = raw.rfind(']')
+        if end_idx == -1: end_idx = raw.rfind('}')
         
-        # Убираем markdown блоки
-        if clean.startswith("```"):
-            parts = clean.split("```")
-            clean = parts[1] if len(parts) >= 2 else clean
-            if clean.startswith("json"):
-                clean = clean[4:]
-        clean = clean.strip()
-        
+        if start_idx == -1 or end_idx == -1:
+            raise ValueError("JSON не найден в ответе модели")
+            
+        clean = raw[start_idx:end_idx + 1]
+
+        # 2. Агрессивное исправление формул (0.4 * 16 -> 6.4)
+        import re
+        def calc_match(match):
+            try:
+                left = float(match.group(2))
+                op = match.group(3)
+                right = float(match.group(4))
+                if op == '*': res = left * right
+                elif op == '/': res = left / right
+                elif op == '+': res = left + right
+                elif op == '-': res = left - right
+                else: return match.group(0)
+                return f'{match.group(1)}{res}'
+            except:
+                return match.group(0)
+
+        # Регулярка ищет : 0.4 * 16 или : 1920 * 1080 внутри JSON
+        pattern = r'("[\w_]+"\s*:\s*)(\d+\.?\d*)\s*([\*\/\+\-])\s*(\d+\.?\d*)'
+        clean = re.sub(pattern, calc_match, clean)
+
+        # 3. Убираем запятые перед закрывающими скобками [1, 2, ] -> [1, 2]
+        clean = re.sub(r',\s*([\]\}])', r'\1', clean)
+
         try:
-            result = json.loads(clean)
-            if isinstance(result, list):
-                logger.info(f"Распарсено позиций: {len(result)}")
-            return result
+            return json.loads(clean)
         except json.JSONDecodeError as e:
-            logger.error(f"JSON parse error: {e}")
-            logger.debug(f"Raw (first 500): {raw[:500]}")
-            raise
+            logger.error(f"JSON Decode Error at line {e.lineno}, col {e.colno}: {e.msg}")
+            # Последняя попытка: если там все еще есть формула, обернем ее в кавычки
+            clean = re.sub(r':\s*(\d+\.?\d*\s*[\*\/\+\-]\s*\d+\.?\d*)', r': "\1"', clean)
+            try:
+                return json.loads(clean)
+            except:
+                logger.debug(f"Текст JSON после очистки: {clean}")
+                raise
     
     def save(self, data: list[dict] | dict, path: str) -> None:
         """Сохраняет результат."""

@@ -73,7 +73,6 @@ class PDFExtractor:
                 # (Можно добавить аналогичный сплит текста через .split("\n2."), но в тендерах 
                 # позиции обычно начинаются с таблиц)
                 current_chunk.append(block)
-
         if current_chunk:
             chunks.append(current_chunk)
         return chunks
