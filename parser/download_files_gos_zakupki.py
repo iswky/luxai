@@ -261,19 +261,22 @@ def extract_file_links_223FZ(url: str, base_url: str = 'https://zakupki.gov.ru')
         print(f"Ошибка при загрузке {url}: {e}")
         return []
 
-def get_link_to_file_page(tender_link: str) -> str:
+def get_link_to_file_page(tender_link: str, FZ: str) -> str:
 
     response = requests.get(tender_link, headers = headers)
 
     soup: BeautifulSoup = BeautifulSoup(response.text, 'html.parser')
-    files: List[Dict[str, Optional[str]]] = []
 
-    section: List = soup.find('div', class_= "tabsNav d-flex")
+    if FZ == "44-ФЗ":
+        section = soup.find('div', class_= "tabsNav d-flex align-items-end")
+    elif FZ == "223-ФЗ":
+        section = soup.find('div', class_= "tabsNav d-flex")
+    else:
+        return ""
 
     if not section:
         print("❌ Секция tabsNav d-flex не найдена")
         return ""
-    
 
     link: Optional[Tag] = section.find('a', href=lambda h: h and 'documents.html' in h)
 
@@ -301,7 +304,7 @@ def download_tenders_files():
         if Files_download_flag == "True":
             continue
 
-        url: str = "https://zakupki.gov.ru" + get_link_to_file_page(tender_link)
+        url: str = "https://zakupki.gov.ru" + get_link_to_file_page(tender_link, FZ)
 
         print
 
@@ -317,6 +320,8 @@ def download_tenders_files():
             files = extract_file_links_44FZ(html_text)
         elif FZ == "223-ФЗ":
             files = extract_file_links_223FZ(url)
+        else:
+            continue
 
         if not files:
             continue
@@ -335,4 +340,6 @@ def download_tenders_files():
 
 
 if __name__ == "__main__":
-    download_tenders_files()
+
+    print(get_link_to_file_page("https://zakupki.gov.ru/epz/order/notice/ea20/view/common-info.html?regNumber=0320100018726000131", "44-ФЗ"))
+    # download_tenders_files()

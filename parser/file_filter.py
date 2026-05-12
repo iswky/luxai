@@ -3,6 +3,7 @@ from openpyxl import load_workbook
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.workbook.workbook import Workbook
 from openpyxl.styles import PatternFill
+from llm import parse_pdf_to_json
 import os
 import re
 
@@ -532,6 +533,23 @@ def read_tenders_info(filename: str) -> List[Tuple[Any, Any, int]]:
 
     return pairs
         
+def import_pdf_files_from_folder_to_database(folder_path: str):
+
+    if not os.path.exists(folder_path):
+        print(f"Папки {folder_path} не найдено")
+        return
+
+    files_in_folder = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+
+    for file in files_in_folder:
+        file_extension = os.path.splitext(file)[1]
+
+        if file_extension == '.pdf':
+            for_dimasik = parse_pdf_to_json(folder_path + file)
+            # Дима, здесь возвращается json pdf-файла, ты его должен записать в бд
+
+
+
 def file_filter():
     tenders_info: List[Tuple[Any, Any, int]] = read_tenders_info("tenders.xlsx")
 
@@ -562,10 +580,14 @@ def file_filter():
 
         delete_files(folder_path, files_in_folder)
 
+        import_pdf_files_from_folder_to_database(folder_path)
+
         ws.cell(row=row_num, column=11, value='True')
         ws.cell(row=row_num, column=11).fill = green_fill
 
         wb.save("tenders.xlsx")
 
 if __name__ == "__main__":
-    file_filter()       
+    
+    import_pdf_files_from_folder_to_database("./tenders_files/")
+    # file_filter()       

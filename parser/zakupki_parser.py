@@ -258,14 +258,14 @@ class TenderParser:
             print(f"❌ Ошибка: {e}")
             return 0
     
-    def parse_page(self: TenderParser, page_number: int = 1):
+    def parse_page(self, page_number: int = 1):
         """Парсит страницу"""
 
         # params = self.base_params.copy()
         params: Dict[str, str] = {}
         params['pageNumber'] = str(page_number)
         
-        url = "https://zakupki.gov.ru/epz/order/extendedsearch/results.html?morphology=on&search-filter=%D0%94%D0%B0%D1%82%D0%B5+%D1%80%D0%B0%D0%B7%D0%BC%D0%B5%D1%89%D0%B5%D0%BD%D0%B8%D1%8F&sortDirection=false&recordsPerPage=_10&showLotsInfoHidden=false&sortBy=UPDATE_DATE&fz44=on&fz223=on&af=on&currencyIdGeneral=-1&okpd2Ids=8874054%2C8874055%2C8874056%2C8874058%2C8874060%2C8874061&okpd2IdsCodes=26.1%2C26.2%2C26.3%2C26.5%2C26.7%2C26.8"
+        url = "https://zakupki.gov.ru/epz/order/extendedsearch/results.html?morphology=on&search-filter=%D0%94%D0%B0%D1%82%D0%B5+%D1%80%D0%B0%D0%B7%D0%BC%D0%B5%D1%89%D0%B5%D0%BD%D0%B8%D1%8F&sortDirection=false&recordsPerPage=_10&showLotsInfoHidden=false&sortBy=UPDATE_DATE&fz44=on&fz223=on&af=on&currencyIdGeneral=-1&okpd2Ids=8889332%2C8889331%2C8873906&okpd2IdsCodes=32.99.53.190%2C32.99.53.130%2C26"
 
         try:
             print(f"📥 Загрузка страницы {page_number}...")
