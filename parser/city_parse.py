@@ -57,7 +57,7 @@ def read_tenders_info(filename: str) -> List[Dict[str, Any]]:
         return []
         
     except Exception as e:
-        # Ловим все остальные непредвиденные ошибки
+        # we catch all other unexpected errors
         print(f"Error in city_parse.py:read_tenders_info: Error in city_parse.py:read_tenders_info: {e}")
         print(f"Тип ошибки: {type(e).__name__}")
         return []
@@ -65,16 +65,16 @@ def read_tenders_info(filename: str) -> List[Dict[str, Any]]:
 
 
 
+# pulls city/town name from address
 def extract_city_from_address(address: str) -> str:
-    """Извлекает название города/населенного пункта из адреса"""
     
-    # Паттерны для поиска города
+    # city search patterns
     patterns = [
-        r'г\.?\s+([А-Яа-я\-]+(?:\s+[А-Яа-я\-]+)?)',  # г. Москва, г Москва
-        r'город\s+([А-Яа-я\-]+(?:\s+[А-Яа-я\-]+)?)',  # город Москва
-        r'пос\.?\s+([А-Яа-я\-]+(?:\s+[А-Яа-я\-]+)?)',  # пос. Солнечный
-        r'д\.?\s+([А-Яа-я\-]+(?:\s+[А-Яа-я\-]+)?)',    # д. Ивановка
-        r'деревня\s+([А-Яа-я\-]+(?:\s+[А-Яа-я\-]+)?)', # деревня Ивановка
+        r'г\.?\s+([А-Яа-я\-]+(?:\s+[А-Яа-я\-]+)?)',  # moscow, moscow
+        r'город\s+([А-Яа-я\-]+(?:\s+[А-Яа-я\-]+)?)',  # moscow city
+        r'пос\.?\s+([А-Яа-я\-]+(?:\s+[А-Яа-я\-]+)?)',  # villagesolar
+        r'д\.?\s+([А-Яа-я\-]+(?:\s+[А-Яа-я\-]+)?)',    # village ivanovka
+        r'деревня\s+([А-Яа-я\-]+(?:\s+[А-Яа-я\-]+)?)', # ivanovka village
     ]
     
     for pattern in patterns:
@@ -82,10 +82,10 @@ def extract_city_from_address(address: str) -> str:
         if match:
             return match.group(1).strip()
     
-    # Если нет маркеров, берем второй элемент по запятым
+    # if there are no markers, take the second element by commas
     parts = [p.strip() for p in address.split(',')]
     if len(parts) >= 2:
-        # Пропускаем индекс (первый элемент)
+        # skip index (first element)
         return parts[1]
     
     return parts[0] if parts else address
@@ -140,7 +140,7 @@ def city_parse():
 
             response = requests.get(url, headers = headers)
 
-            # Получаем HTML как строку
+            # getting html as a string
             html_text: str = response.text
 
             city = extract_city(html_text)

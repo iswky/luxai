@@ -17,8 +17,8 @@ except ImportError as e:
     OPENPYXL_AVAILABLE = False
     print(f"❌ openpyxl не установлен: {e}")
 
+# tender parser with extended data
 class TenderParser:
-    """Парсер тендеров с расширенными данными"""
 
     red_fill: PatternFill
     excel_file: str
@@ -42,31 +42,26 @@ class TenderParser:
         
         self.base_params = self.load_filters_from_file("./params.txt")
         
-        # Загружаем существующие номера при запуске (один раз)
+        # load existing numbers at startup (one time)
         self.existing_numbers = self.load_existing_tenders()
         
         print("\n" + "="*60)
         print("🎯 ПАРСЕР ЗАПУЩЕН")
         print("="*60)
     
+    # reads filters from a txt file in the key=value format
     def load_filters_from_file(self, file_path: str) -> Dict[str, str]:
-        """
-        Считывает фильтры из txt файла в формате key=value
-        
-        Returns:
-            Dict[str, str]: Словарь параметров
-        """
         params: Dict[str, str] = {}
         
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 for line in f:
                     line = line.strip()
-                    # Пропускаем пустые строки и комментарии
+                    # skip empty lines and comments
                     if not line or line.startswith('#'):
                         continue
                     
-                    # Разделяем по первому знаку равенства
+                    # divide by the first equal sign
                     if '=' in line:
                         key, value = line.split('=', 1)
                         params[key.strip()] = value.strip()
@@ -78,8 +73,8 @@ class TenderParser:
         
         return params
 
+    # grabs existing tender numbers from excel
     def load_existing_tenders(self):
-        """Загружает существующие номера тендеров из Excel"""
         existing_numbers = set()
         
         if OPENPYXL_AVAILABLE and os.path.exists(self.excel_file):
@@ -99,17 +94,17 @@ class TenderParser:
         
         return existing_numbers
     
+    # stashes new tenders (only those that don't exist yet)
     def save_tenders(self, new_tenders):
-        """Сохраняет новые тендеры (только те, которых еще нет)"""
         if not new_tenders:
             return 0
         
-        # Фильтруем только новые тендеры
+        # we filter only new tenders
         truly_new = {}
         for number, info in new_tenders.items():
             if number not in self.existing_numbers:
                 truly_new[number] = info
-                self.existing_numbers.add(number)  # Добавляем в кэш
+                self.existing_numbers.add(number)  # add to cache
         
         if not truly_new:
             print(f"⏭️ Нет новых тендеров для сохранения")
@@ -122,38 +117,35 @@ class TenderParser:
         
         return result
     
+    # finds all empty rows in a table.spits out a list of line numbers where the first column is empty.
     def _find_empty_rows(self, ws):
-        """
-        Находит все пустые строки в таблице.
-        Возвращает список номеров строк, где первая колонка пустая.
-        """
         empty_rows = []
         max_row = ws.max_row
         
-        # Если в таблице только заголовки, нет пустых строк
+        # if the table has only headers, there are no empty rows
         if max_row <= 1:
             return []
         
-        # Собираем все номера строк с пустой первой колонкой
+        # collecting all line numbers with an empty first column
         for row in range(2, max_row + 1):
             if ws.cell(row=row, column=1).value is None:
                 empty_rows.append(row)
             else:
-                # Проверяем, не пустая ли строка (все колонки пустые)
+                # checking if the line is empty (all columns are empty)
                 is_completely_empty = True
-                for col in range(1, 12):  # Проверяем все 11 колонок
+                for col in range(1, 12):  # checking all 11 columns
                     if ws.cell(row=row, column=col).value is not None:
                         is_completely_empty = False
                         break
                 if is_completely_empty:
                     empty_rows.append(row)
         
-        return sorted(empty_rows)  # Сортируем для последовательного заполнения
+        return sorted(empty_rows)  # sort for sequential filling
 
+    # adds new tenders in excel, filling in the blank lines at the beginning
     def _append_to_excel(self, new_tenders):
-        """Добавляет новые тендеры в Excel, заполняя пустые строки в начале"""
         try:
-            # Открываем или создаем файл
+            # open or create a file
             if os.path.exists(self.excel_file):
                 wb = load_workbook(self.excel_file)
                 ws = wb.active
@@ -178,19 +170,19 @@ class TenderParser:
             ws.column_dimensions['J'].width = 20
             ws.column_dimensions['K'].width = 30
 
-            # Находим пустые строки
+            # finding empty lines
             empty_rows = self._find_empty_rows(ws)
             
-            # Создаем очередь из пустых строк
+            # creating a queue of empty lines
             from collections import deque
             empty_rows_queue = deque(empty_rows)
             
-            # Подготавливаем данные для добавления
+            # preparing data to add
             added_count = 0
             next_new_row = ws.max_row + 1
             
             for number, info in new_tenders.items():
-                # Берем следующую пустую строку или создаем новую
+                # take the next empty line or create a new one
                 if empty_rows_queue:
                     target_row = empty_rows_queue.popleft()
                     location = f"пустую строку {target_row}"
@@ -199,7 +191,7 @@ class TenderParser:
                     next_new_row += 1
                     location = f"новую строку {target_row}"
                 
-                # Записываем данные
+                # recording data
                 ws.cell(row=target_row, column=1, value=number)
                 ws.cell(row=target_row, column=2, value=info['name'])
                 ws.cell(row=target_row, column=3, value=info['url'])
@@ -226,15 +218,15 @@ class TenderParser:
             traceback.print_exc()
             return 0
     
+    # stashes to csv with columns city and files downloaded
     def _append_to_csv(self, new_tenders):
-        """Сохраняет в CSV с колонками Город и Файлы скачаны"""
         try:
             file_exists = os.path.exists(self.csv_file)
             
             with open(self.csv_file, 'a', newline='', encoding='utf-8-sig') as f:
                 writer = csv.writer(f)
                 if not file_exists:
-                    # Заголовки с новыми столбцами
+                    # headings with new columns
                     writer.writerow(['number', 'name', 'url', 'price', 'law', 'end_date', 
                                     'customer', 'first_seen', 'city', 'files_downloaded'])
                 
@@ -248,8 +240,8 @@ class TenderParser:
                         info.get('end_date', 'Не указана'),
                         info.get('customer', 'Не указан'),
                         info['first_seen'],
-                        info.get('city', 'Не указан'),  # Город (пока заглушка, потом можно будет парсить)
-                        'False'                         # Файлы скачаны = False
+                        info.get('city', 'Не указан'),  # city (still a stub, later you can parse it)
+                        'False'                         # files downloaded = false
                     ])
             
             print(f"💾 Сохранено {len(new_tenders)} новых тендеров в {self.csv_file}")
@@ -258,8 +250,8 @@ class TenderParser:
             print(f"❌ Ошибка: {e}")
             return 0
     
+    # chews through the page
     def parse_page(self, page_number: int = 1):
-        """Парсит страницу"""
 
         # params = self.base_params.copy()
         params: Dict[str, str] = {}
@@ -277,8 +269,8 @@ class TenderParser:
             print(f"❌ Ошибка страницы {page_number}: {e}")
             return [], None
     
+    # retrieves tenders with enhanced data
     def extract_tenders(self, soup):
-        """Извлекает тендеры с расширенными данными"""
         tenders = {}
         current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
@@ -287,7 +279,7 @@ class TenderParser:
         
         for block in blocks:
             try:
-                # Номер и ссылка
+                # number and link
                 number_div = block.find('div', class_='registry-entry__header-mid__number')
                 if not number_div:
                     continue
@@ -299,13 +291,13 @@ class TenderParser:
                 number = link.text.strip()
                 url = link.get('href')
                 
-                # Название
+                # name
                 name_div = block.find('div', class_='registry-entry__body-value')
                 name = name_div.text.strip() if name_div else 'Название не указано'
                 if len(name) > 200:
                     name = name[:197] + '...'
                 
-                # Заказчик
+                # customer
                 customer = 'Не указан'
                 customer_block = block.find('div', class_='registry-entry__body-block')
                 if customer_block:
@@ -325,7 +317,7 @@ class TenderParser:
                             if len(customer) > 100:
                                 customer = customer[:97] + '...'
                 
-                # ФЗ
+                # federal law
                 law_tag = block.find('div', class_='registry-entry__header-top__title')
                 law = 'Не указан'
                 if law_tag:
@@ -337,7 +329,7 @@ class TenderParser:
                     else:
                         law = law_text[:20]
                 
-                # Цена
+                # price
                 price = 'Не указана'
                 price_block = block.find('div', class_='price-block')
                 if price_block:
@@ -350,7 +342,7 @@ class TenderParser:
                         else:
                             price = price_text.replace('₽', '').replace('&8381;', '').strip()
                 
-                # Дата окончания
+                # end date
                 end_date = 'Не указана'
                 data_block = block.find('div', class_='data-block')
                 if data_block:
@@ -372,7 +364,7 @@ class TenderParser:
                     'first_seen': current_date
                 }
                 
-                # Отмечаем, есть ли уже в базе
+                # we note whether it is already in the database
                 status = "✅" if number not in self.existing_numbers else "⏭️"
                 print(f"  {status} {number} | {law} | {price} руб.")
                 
@@ -382,15 +374,15 @@ class TenderParser:
         
         return tenders
     
+    # peeks at next page
     def has_next_page(self, soup):
-        """Проверяет следующую страницу"""
         try:
             return soup.find('a', class_='paginator-button-next') is not None
         except:
             return False
     
+    # chews through all pages and stashes along the way
     def parse_all_pages(self, max_pages=None):
-        """Парсит все страницы и сохраняет по ходу"""
         print("="*60)
         print("🚀 ПАРСИНГ ТЕНДЕРОВ (сохранение по ходу)")
         print("="*60)
@@ -411,7 +403,7 @@ class TenderParser:
                 print("❌ Тендеры не найдены")
                 break
             
-            # Сохраняем ТОЛЬКО НОВЫЕ тендеры с этой страницы
+            # we save only new tenders from this page
             new_on_page = self.save_tenders(page_tenders)
             total_new += new_on_page
             
@@ -422,7 +414,7 @@ class TenderParser:
                 break
             
             page += 1
-            time.sleep(1)  # Пауза между запросами
+            time.sleep(1)  # pause between requests
         
         print(f"\n📊 ВСЕГО ДОБАВЛЕНО НОВЫХ ТЕНДЕРОВ: {total_new}")
         print(f"📁 Всего в базе: {len(self.existing_numbers)}")

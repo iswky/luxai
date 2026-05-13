@@ -21,61 +21,59 @@ headers = {
 green_fill = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
 
 
+# safe archive unpacking with all error handling
 def unarchive_file(file_path: str):
-    """
-    Безопасная распаковка архива с обработкой всех ошибок
-    """
 
     import shutil
     from unzipall import extract
     from unzipall.exceptions import ArchiveExtractionError
 
     
-    # Проверка существования файла
+    # checking file existence
     if not os.path.exists(file_path):
         print(f"⚠️ Файл не найден: {file_path}")
         return False
     
-    # Проверка, что это файл, а не папка
+    # checking that it is a file and not a folder
     if not os.path.isfile(file_path):
         print(f"⚠️ Путь не является файлом: {file_path}")
         return False
     
     try:
-        # Пытаемся распаковать архив
+        # we are trying to unpack the archive
         print(f"📦 Распаковка: {file_path}")
         extract(file_path)
         
-        # Удаляем архив после успешной распаковки
+        # deleting the archive after successful unpacking
         if os.path.exists(file_path):
             os.remove(file_path)
             print(f"✅ Архив удален: {file_path}")
         
     except ArchiveExtractionError as e:
         print(f"❌ Ошибка распаковки {file_path}: {e}")
-        # Не удаляем архив, чтобы можно было попробовать позже
+        # don't delete the archive so you can try later
         return False
     except Exception as e:
         print(f"❌ Неожиданная ошибка при распаковке {file_path}: {e}")
         return False
     
-    # Формируем пути для перемещения файлов
+    # forming paths for moving files
     try:
-        # Получаем имя без расширения (более надежный способ)
+        # getting the name without extension (more reliable way)
         source_folder = os.path.splitext(file_path)[0]
         
-        # Если папка не существует, возможно архив не создал папку
+        # if the folder does not exist, the archive may not have created the folder
         if not os.path.exists(source_folder):
             print(f"⚠️ Папка {source_folder} не найдена после распаковки")
             return False
         
-        # Родительская папка (на уровень выше)
+        # parent folder (one level up)
         destination_folder = os.path.dirname(source_folder)
         
         print(f"📁 Исходная папка: {source_folder}")
         print(f"📂 Папка назначения: {destination_folder}")
         
-        # Перемещаем все файлы и папки
+        # moving all files and folders
         moved_count = 0
         error_count = 0
         
@@ -84,9 +82,9 @@ def unarchive_file(file_path: str):
             destination_path = os.path.join(destination_folder, item)
             
             try:
-                # Если в папке назначения уже есть такой файл/папка
+                # if there is already such a file/folder in the destination folder
                 if os.path.exists(destination_path):
-                    # Генерируем уникальное имя
+                    # generating a unique name
                     base, ext = os.path.splitext(item)
                     counter = 1
                     while os.path.exists(destination_path):
@@ -95,7 +93,7 @@ def unarchive_file(file_path: str):
                         counter += 1
                     print(f"🔄 Переименован: {item} -> {os.path.basename(destination_path)}")
                 
-                # Перемещаем
+                # moving
                 shutil.move(source_path, destination_path)
                 moved_count += 1
                 
@@ -104,13 +102,13 @@ def unarchive_file(file_path: str):
                 error_count += 1
                 continue
         
-        # Удаляем исходную папку
+        # deleting the original folder
         try:
             if os.path.exists(source_folder):
-                os.rmdir(source_folder)  # Пробуем удалить пустую папку
+                os.rmdir(source_folder)  # trying to delete an empty folder
                 print(f"🗑️ Удалена папка: {source_folder}")
         except OSError:
-            # Папка не пуста, удаляем рекурсивно
+            # the folder is not empty, delete it recursively
             try:
                 shutil.rmtree(source_folder)
                 print(f"🗑️ Удалена папка с содержимым: {source_folder}")
@@ -129,7 +127,7 @@ def download_file(url: str, filename: str = "file.html", tender_number: str = "u
         'User-Agent': 'Mozilla/5.0'
     }
 
-    # Формируем путь: tenders_files/<tender_number>/
+    # form the path: tenders_files/<tender_number>/
     path = os.path.join("tenders_files", tender_number)
     os.makedirs(path, exist_ok=True)
     filepath = os.path.join(path, filename)
@@ -201,18 +199,18 @@ def extract_file_links_223FZ(url: str, base_url: str = 'https://zakupki.gov.ru')
             
             page.goto(url)
 
-            # ✅ Ждём внутри блока
+            # ✅ we are waiting inside the block
             try:
                 page.wait_for_selector("a[href*='download.html']", timeout=15000)
                 html = page.content()
                 browser.close()
-                # Продолжаем обработку HTML
+                # continue processing html
             except Exception:
                 print(f"⚠️ Таймаут: элемент 'a[href*='download.html']' не найден на {url}")
                 browser.close()
                 return []
 
-        # ✅ Используем html, который получили
+        # ✅ we use the html that we received
         soup: BeautifulSoup = BeautifulSoup(html, 'html.parser')
         files: List[Dict[str, Optional[str]]] = []
 
@@ -313,7 +311,7 @@ def download_tenders_files():
         print(f"скачиваем файлы для тендера: {tender_id}")
 
         if FZ == "44-ФЗ":
-            # Получаем HTML
+            # getting html
             response = requests.get(url, headers = headers)
             html_text: str = response.text
             files: List[Dict[str, Optional[str]]] = []

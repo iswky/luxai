@@ -1,17 +1,4 @@
-"""
-llm.py
---------------------
-Извлекает технические спецификации из PDF госзакупок
-и возвращает структурированный JSON через DeepSeek API.
-
-Установка зависимостей:
-    pip install pdfplumber pandas tabulate openai
-
-Использование:
-    from llm import parse_pdf_to_json
-    result = parse_pdf_to_json("tender.pdf")
-    # result — распарсенный JSON
-"""
+# llm.py -------------------- pulls technical specifications from government procurement pdfs and spits out structured json via the deepseek api.installing dependencies: pip install pdfplumber pandas tabulate openai usage: from llm import parse_pdf_to_json result = parse_pdf_to_json("tender.pdf") # result - parsed json
 
 import json
 import os
@@ -26,7 +13,7 @@ logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)
 
 
-# ─────────────────────────── промпт ───────────────────────────
+# ─────────────────────────── prompt───────────────────────────
 SYSTEM_PROMPT = """Ты — строгий аналитический парсер технических спецификаций из документов российских госзакупок.
 Твоя задача — извлечь требования к товарам и вернуть строго JSON-массив. Этот JSON в будущем будет использоваться кодом для АВТОМАТИЧЕСКОГО МАТЕМАТИЧЕСКОГО СРАВНЕНИЯ с предложениями поставщиков.
 
@@ -134,9 +121,9 @@ SYSTEM_PROMPT = """Ты — строгий аналитический парсе
 
 ВЕРНИ ТОЛЬКО JSON БЕЗ КАКИХ-ЛИБО ПОЯСНЕНИЙ И МАРКДАУН-БЛОКОВ."""
 
-# ─────────────────────── вызов DeepSeek API ───────────────────
+# call deepseek api───────────────────
+# sends the extracted text to deepseek and spits out a raw response.
 def _call_deepseek(content: str, api_key: str) -> str:
-    """Отправляет извлечённый текст в DeepSeek и возвращает сырой ответ."""
     client = OpenAI(
         api_key=api_key,
         base_url="https://api.deepseek.com",
@@ -147,7 +134,7 @@ def _call_deepseek(content: str, api_key: str) -> str:
     response = client.chat.completions.create(
         model="deepseek-chat",
         response_format={"type": "json_object"},
-        temperature=0,          # детерминированный вывод — важно для парсинга
+        temperature=0,          # deterministic output - important for parsing
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {
@@ -164,18 +151,15 @@ def _call_deepseek(content: str, api_key: str) -> str:
     return response.choices[0].message.content
 
 
-# ─────────────────────── очистка ответа ───────────────────────
+# ─────────────────────── answer cleaning───────────────────────
+# removes possible markdown wrappers and chews through json.we use \x60 (hex for `) to avoid breaking file parsing in the ide/interface.
 def _clean_and_parse_json(raw: str) -> dict:
-    """
-    Убирает возможные markdown-обёртки и парсит JSON.
-    Мы используем \\x60 (hex для `), чтобы не ломать парсинг файла в IDE/интерфейсе.
-    """
     cleaned = re.sub(r"^\x60\x60\x60(?:json)?\s*", "", raw.strip(), flags=re.IGNORECASE)
     cleaned = re.sub(r"\s*\x60\x60\x60$", "", cleaned.strip())
 
     try:
         data = json.loads(cleaned)
-        # Гарантируем, что вернется dict с ключом items
+        # we guarantee that a dict with the key items will be returned
         if isinstance(data, list):
             return {"items": data}
         return data
@@ -184,16 +168,14 @@ def _clean_and_parse_json(raw: str) -> dict:
         return {"items": [], "unparsed_features": ["Ошибка декодирования JSON ответа"]}
 
 
-# ─────────────────────── публичная функция ────────────────────
+# ─────────────────────── public func────────────────────
+# chews through pdf with technical requirements of government procurement and spits out json.
 def parse_pdf_to_json(
     pdf_path: str,
     output_json_path: str | None = None,
     api_key: str | None = None,
 ) -> dict:
-    """
-    Парсит PDF с техническими требованиями госзакупки и возвращает JSON.
-    """
-    # 1. Определяем API-ключ
+    # 1. determine the api key
     resolved_key = api_key or os.environ.get("DEEPSEEK_API_KEY")
     if not resolved_key:
         raise ValueError(
@@ -201,7 +183,7 @@ def parse_pdf_to_json(
             "или установите переменную окружения DEEPSEEK_API_KEY."
         )
 
-    # 2. Извлекаем блоки и разбиваем на логические позиции
+    # 2. extract blocks and break them into logical positions
     logger.info(f"📄 Читаем PDF: {pdf_path}")
     extractor = PDFExtractor()
     stream = extractor.extract_as_stream(pdf_path)
@@ -217,7 +199,7 @@ def parse_pdf_to_json(
 
     all_items = []
 
-    # 3. Обрабатываем каждый блок отдельно
+    # 3. we process each block separately
     for i, chunk in enumerate(logical_chunks, 1):
         context = extractor.blocks_to_markdown(chunk)
         
@@ -239,7 +221,7 @@ def parse_pdf_to_json(
     final_result = {"items": all_items}
     logger.info(f"✅ Анализ завершен! Всего извлечено {len(all_items)} позиций.")
 
-    # 4. Сохраняем в файл
+    # 4. save to file
     if output_json_path is None:
         base = os.path.splitext(pdf_path)[0]
         output_json_path = base + ".json"
@@ -251,7 +233,7 @@ def parse_pdf_to_json(
     return final_result
 
 
-# ─────────────────────────── CLI ──────────────────────────────
+# cli──────────────────────────────
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Использование: python llm.py <путь_до.pdf> [путь_до.json]")

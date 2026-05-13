@@ -40,7 +40,7 @@ def main():
                 writer.writerows(rows)
             print(f"✅ Данные сохранены в {args.output}")
         else:
-            # Печать в консоль (табличный вид)
+            # print to console (tabular view)
             writer = csv.writer(sys.stdout)
             writer.writerow(colnames)
             writer.writerows(rows)
