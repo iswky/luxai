@@ -38,7 +38,7 @@ def main():
                 writer = csv.writer(f)
                 writer.writerow(colnames)
                 writer.writerows(rows)
-            print(f"✅ Данные сохранены в {args.output}")
+            print(f"Data saved to {args.output}")
         else:
             # print to console (tabular view)
             writer = csv.writer(sys.stdout)
@@ -49,10 +49,10 @@ def main():
         conn.close()
 
     except psycopg2.Error as e:
-        print(f"❌ Ошибка PostgreSQL: {e}")
+        print(f"PostgreSQL error: {e}")
         sys.exit(1)
     except Exception as e:
-        print(f"❌ Ошибка: {e}")
+        print(f"Error: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":

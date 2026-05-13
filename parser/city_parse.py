@@ -59,7 +59,7 @@ def read_tenders_info(filename: str) -> List[Dict[str, Any]]:
     except Exception as e:
         # we catch all other unexpected errors
         print(f"Error in city_parse.py:read_tenders_info: Error in city_parse.py:read_tenders_info: {e}")
-        print(f"Тип ошибки: {type(e).__name__}")
+        print(f"Error type: {type(e).__name__}")
         return []
         
 
@@ -97,10 +97,10 @@ def extract_city(html_content: str) -> str:
     sections: List = soup.find_all('section', class_= "blockInfo__section section")
 
     if not sections:
-        print("❌ Секция blockInfo__section section не найдена")
+        print("Section blockInfo__section not found")
         return "Не указан"
     
-    print(f"Найдено секций: {len(sections)}")
+    print(f"Sections found: {len(sections)}")
     
     for section in sections:
         span = section.find('span', class_ = "section__title")

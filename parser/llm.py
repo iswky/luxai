@@ -190,11 +190,11 @@ def parse_pdf_to_json(
     logical_chunks = extractor.group_stream_by_items(stream)
 
     print("\n" + "="*50)
-    print(f"📊 ЛОГИЧЕСКИЕ ПОЗИЦИИ (найдено {len(logical_chunks)}):")
+    print(f"LOGICAL POSITIONS (found {len(logical_chunks)}):")
     for i, chunk in enumerate(logical_chunks, 1):
         pages = sorted(list(set([b.page for b in chunk])))
         p_range = f"{pages[0]}-{pages[-1]}" if len(pages) > 1 else f"{pages[0]}"
-        print(f"  📦 Позиция {i}: блоки со страниц {p_range} ({len(chunk)} блоков)")
+        print(f"Position {i}: blocks from pages {p_range} ({len(chunk)} blocks)")
     print("="*50 + "\n")
 
     all_items = []
@@ -236,7 +236,7 @@ def parse_pdf_to_json(
 # cli──────────────────────────────
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Использование: python llm.py <путь_до.pdf> [путь_до.json]")
+        print("Usage: python llm.py <path_to.pdf> [path_to.json]")
         sys.exit(1)
 
     pdf = sys.argv[1]

@@ -12,10 +12,10 @@ try:
     from openpyxl import Workbook, load_workbook
     from openpyxl.styles import Font, Alignment, PatternFill
     OPENPYXL_AVAILABLE = True
-    print("✅ openpyxl загружен успешно")
+    print("openpyxl loaded successfully")
 except ImportError as e:
     OPENPYXL_AVAILABLE = False
-    print(f"❌ openpyxl не установлен: {e}")
+    print(f"openpyxl not installed: {e}")
 
 # tender parser with extended data
 class TenderParser:
@@ -46,7 +46,7 @@ class TenderParser:
         self.existing_numbers = self.load_existing_tenders()
         
         print("\n" + "="*60)
-        print("🎯 ПАРСЕР ЗАПУЩЕН")
+        print("PARSER STARTED")
         print("="*60)
     
     # reads filters from a txt file in the key=value format
@@ -67,9 +67,9 @@ class TenderParser:
                         params[key.strip()] = value.strip()
                         
         except FileNotFoundError:
-            print(f"❌ Файл {file_path} не найден")
+            print(f"File {file_path} not found")
         except Exception as e:
-            print(f"❌ Ошибка при чтении файла: {e}")
+            print(f"Error reading file: {e}")
         
         return params
 
@@ -86,11 +86,11 @@ class TenderParser:
                     if row[0]:
                         existing_numbers.add(str(row[0]).strip())
                 
-                print(f"📂 Загружено существующих тендеров: {len(existing_numbers)}")
+                print(f"Existing tenders loaded: {len(existing_numbers)}")
             except Exception as e:
-                print(f"Ошибка при загрузке: {e}")
+                print(f"Error loading: {e}")
         else:
-            print("📂 Файл не найден или пуст. Будут добавлены все тендеры.")
+            print("File not found or empty. All tenders will be added.")
         
         return existing_numbers
     
@@ -107,7 +107,7 @@ class TenderParser:
                 self.existing_numbers.add(number)  # add to cache
         
         if not truly_new:
-            print(f"⏭️ Нет новых тендеров для сохранения")
+            print(f"No new tenders to save")
             return 0
         
         if OPENPYXL_AVAILABLE:
@@ -207,14 +207,14 @@ class TenderParser:
                 ws.cell(row=target_row, column=11).fill = self.red_fill
                 
                 added_count += 1
-                print(f"   ➕ Тендер {number} добавлен в {location}")
+                print(f"Tender {number} added to {location}")
             
             wb.save(self.excel_file)
-            print(f"💾 Добавлено {added_count} тендеров (пустых строк использовано: {len(empty_rows[:added_count])})")
+            print(f"Added {added_count} tenders (empty rows used: {len(empty_rows[:added_count])})")
             return added_count
             
         except Exception as e:
-            print(f"❌ Ошибка сохранения: {e}")
+            print(f"Save error: {e}")
             traceback.print_exc()
             return 0
     
@@ -244,10 +244,10 @@ class TenderParser:
                         'False'                         # files downloaded = false
                     ])
             
-            print(f"💾 Сохранено {len(new_tenders)} новых тендеров в {self.csv_file}")
+            print(f"Saved {len(new_tenders)} new tenders to {self.csv_file}")
             return len(new_tenders)
         except Exception as e:
-            print(f"❌ Ошибка: {e}")
+            print(f"Error: {e}")
             return 0
     
     # chews through the page
@@ -260,13 +260,13 @@ class TenderParser:
         url = "https://zakupki.gov.ru/epz/order/extendedsearch/results.html?morphology=on&search-filter=%D0%94%D0%B0%D1%82%D0%B5+%D1%80%D0%B0%D0%B7%D0%BC%D0%B5%D1%89%D0%B5%D0%BD%D0%B8%D1%8F&sortDirection=false&recordsPerPage=_10&showLotsInfoHidden=false&sortBy=UPDATE_DATE&fz44=on&fz223=on&af=on&currencyIdGeneral=-1&okpd2Ids=8889332%2C8889331%2C8873906&okpd2IdsCodes=32.99.53.190%2C32.99.53.130%2C26"
 
         try:
-            print(f"📥 Загрузка страницы {page_number}...")
+            print(f"Loading page {page_number}...")
             response = requests.get(url, headers=self.headers, params=params, timeout=15)
             response.raise_for_status()
             soup = BeautifulSoup(response.text, 'html.parser')
             return self.extract_tenders(soup), soup
         except Exception as e:
-            print(f"❌ Ошибка страницы {page_number}: {e}")
+            print(f"Page error {page_number}: {e}")
             return [], None
     
     # retrieves tenders with enhanced data
@@ -275,7 +275,7 @@ class TenderParser:
         current_date = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         
         blocks = soup.find_all('div', class_='search-registry-entry-block')
-        print(f"🔍 Найдено блоков: {len(blocks)}")
+        print(f"Blocks found: {len(blocks)}")
         
         for block in blocks:
             try:
@@ -365,11 +365,11 @@ class TenderParser:
                 }
                 
                 # we note whether it is already in the database
-                status = "✅" if number not in self.existing_numbers else "⏭️"
-                print(f"  {status} {number} | {law} | {price} руб.")
+                status = "New" if number not in self.existing_numbers else "Exists"
+                print(f"{status} {number} | {law} | {price} rub.")
                 
             except Exception as e:
-                print(f"  ⚠️ Ошибка парсинга блока: {e}")
+                print(f"Block parsing error: {e}")
                 continue
         
         return tenders
@@ -384,7 +384,7 @@ class TenderParser:
     # chews through all pages and stashes along the way
     def parse_all_pages(self, max_pages=None):
         print("="*60)
-        print("🚀 ПАРСИНГ ТЕНДЕРОВ (сохранение по ходу)")
+        print("PARSING TENDERS (saving as we go)")
         print("="*60)
         
         page: int = 1
@@ -392,33 +392,33 @@ class TenderParser:
         
         while True:
             if max_pages and page > max_pages:
-                print(f"🏁 Достигнут лимит страниц ({max_pages})")
+                print(f"Page limit reached ({max_pages})")
                 break
             
-            print(f"\n--- Страница {page} ---")
+            print(f"\n--- Page {page} ---")
             
             page_tenders, soup = self.parse_page(page)
             
             if not page_tenders:
-                print("❌ Тендеры не найдены")
+                print("Tenders not found")
                 break
             
             # we save only new tenders from this page
             new_on_page = self.save_tenders(page_tenders)
             total_new += new_on_page
             
-            print(f"📊 На странице: новых {new_on_page}, всего добавлено {total_new}")
+            print(f"On page: new {new_on_page}, total added {total_new}")
             
             if not self.has_next_page(soup):
-                print("🏁 Последняя страница")
+                print("Last page")
                 break
             
             page += 1
             time.sleep(1)  # pause between requests
         
-        print(f"\n📊 ВСЕГО ДОБАВЛЕНО НОВЫХ ТЕНДЕРОВ: {total_new}")
-        print(f"📁 Всего в базе: {len(self.existing_numbers)}")
-        print(f"💾 Файл: {self.excel_file}")
+        print(f"\n TOTAL NEW TENDERS ADDED: {total_new}")
+        print(f"Total in database: {len(self.existing_numbers)}")
+        print(f"File: {self.excel_file}")
         
         return total_new
 
@@ -427,41 +427,41 @@ def Parse_gos_zakupki():
 
     while True:
         print("\n" + "="*60)
-        print("ПАРСЕР ТЕНДЕРОВ (сохранение по ходу)")
+        print("TENDER PARSER (saving as we go)")
         print("="*60)
-        print("1. 🚀 Парсить все страницы")
-        print("2. 🔢 Парсить N страниц")
-        print("3. 🚪 Выход")
+        print("1.  Parse all pages")
+        print("2.  Parse N pages")
+        print("3.  Exit")
         print("="*60)
         
-        choice = input("Выберите действие: ").strip()
+        choice = input("Choose an action: ").strip()
         
         if choice == '1':
             try:
                 parser.parse_all_pages()
             except KeyboardInterrupt:
-                print("\n\n⚠️ Прервано пользователем")
-                print("✅ Данные уже сохранены, можно запустить заново - дубликаты не добавятся")
+                print("\n\n Interrupted by user")
+                print("Data already saved, can restart - duplicates will not be added")
             except Exception as e:
-                print(f"❌ Ошибка: {e}")
+                print(f"Error: {e}")
                 traceback.print_exc()
         
         elif choice == '2':
             try:
-                pages = input("Сколько страниц парсить? ").strip()
+                pages = input("How many pages to parse? ").strip()
                 max_pages = int(pages) if pages else 10
                 parser.parse_all_pages(max_pages=max_pages)
             except KeyboardInterrupt:
-                print("\n\n⚠️ Прервано пользователем")
+                print("\n\n Interrupted by user")
             except Exception as e:
-                print(f"❌ Ошибка: {e}")
+                print(f"Error: {e}")
         
         elif choice == '3':
-            print("👋 До свидания!")
+            print("Goodbye!")
             break
         
         else:
-            print("❌ Неверный выбор")
+            print("Invalid choice")
 
 if __name__ == "__main__":
     

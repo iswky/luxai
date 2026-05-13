@@ -15,7 +15,7 @@ def load_keywords_from_file(filename: str = "file_filter_keywords.txt") -> List[
     
     # checking the existence of the file
     if not os.path.exists(filename):
-        print(f"⚠️ Файл {filename} не найден. Использую стандартные ключевые слова.")
+        print(f"File {filename} not found. Using default keywords.")
         return get_default_keywords()
     
     try:
@@ -30,15 +30,15 @@ def load_keywords_from_file(filename: str = "file_filter_keywords.txt") -> List[
                 keywords.append(line)
         
         if not keywords:
-            print(f"⚠️ Файл {filename} не содержит ключевых слов. Использую стандартные.")
+            print(f"File {filename} contains no keywords. Using defaults.")
             return get_default_keywords()
         
-        print(f"✅ Загружено {len(keywords)} ключевых слов из {filename}")
+        print(f"Loaded {len(keywords)} keywords from {filename}")
         return keywords
         
     except Exception as e:
-        print(f"❌ Ошибка при чтении {filename}: {e}")
-        print("Использую стандартные ключевые слова.")
+        print(f"Error reading {filename}: {e}")
+        print("Using default keywords.")
         return get_default_keywords()
 
 # spits out a standard list of keywords (if the file is not found).
@@ -83,11 +83,11 @@ def delete_files(path: str, filenames: List[str]):
         try:
             if os.path.isfile(file_path):
                 os.remove(file_path)
-                print(f"Удален: {filename}")
+                print(f"Deleted: {filename}")
             else:
-                print(f"Файл не найден: {filename}")
+                print(f"File not found: {filename}")
         except Exception as e:
-            print(f"Ошибка при удалении {filename}: {e}")
+            print(f"Error deleting {filename}: {e}")
 
 def convert_files_to_pdf(folder_path: str, files: List[str]):
     # checking the existence of the directory
@@ -116,12 +116,12 @@ def convert1file2pdf(file_path: str):
         if file_extension in ['.docx', '.doc']:
             convert_word_to_pdf(file_path, output_filename)
         else:
-            print(f"⚠️ Неподдерживаемый формат: {file_path}")
+            print(f"Unsupported format: {file_path}")
         
-        print(f"✅ Конвертирован: {file_path} -> {output_filename}")
+        print(f"Converted: {file_path} -> {output_filename}")
         
     except Exception as e:
-        print(f"❌ Ошибка при конвертации {file_path}: {str(e)}")
+        print(f"Conversion error {file_path}: {str(e)}")
     
 
 
@@ -143,7 +143,7 @@ def convert_to_pdf(path: str, files: List[str]):
         
         # checking the existence of the file
         if not os.path.exists(file_path):
-            print(f"❌ Файл не найден: {filename}")
+            print(f"File not found: {filename}")
             failed_files.append(filename)
             continue
         
@@ -160,25 +160,25 @@ def convert_to_pdf(path: str, files: List[str]):
             if file_extension in ['.docx']:
                 convert_word_to_pdf(file_path, output_path)
             else:
-                print(f"⚠️ Неподдерживаемый формат: {filename}")
+                print(f"Unsupported format: {filename}")
                 failed_files.append(filename)
                 continue
             
-            print(f"✅ Конвертирован: {filename} -> {output_filename}")
+            print(f"Converted: {filename} -> {output_filename}")
             converted_files.append(filename)
             
         except Exception as e:
-            print(f"❌ Ошибка при конвертации {filename}: {str(e)}")
+            print(f"Conversion error {filename}: {str(e)}")
             failed_files.append(filename)
     
     # statistics output
     print("\n" + "="*50)
-    print(f"📊 Статистика конвертации:")
-    print(f"   Успешно: {len(converted_files)} файлов")
-    print(f"   Ошибок: {len(failed_files)} файлов")
+    print(f"Conversion stats:")
+    print(f"Success: {len(converted_files)} files")
+    print(f"Errors: {len(failed_files)} files")
     
     if failed_files:
-        print(f"\n❌ Не удалось конвертировать: {', '.join(failed_files)}")
+        print(f"\n Failed to convert: {', '.join(failed_files)}")
 
 # helper funcs for different formats:
 # converts word document to pdf
@@ -214,11 +214,11 @@ def convert_word_to_pdf(input_path: str, output_path: str = None):
         if generated_pdf != output_path:
             os.rename(generated_pdf, output_path)
         
-        print(f"✅ Конвертация успешна: {output_path}")
+        print(f"Conversion successful: {output_path}")
         return output_path
         
     except subprocess.CalledProcessError as e:
-        print(f"❌ Ошибка конвертации: {e}")
+        print(f"Conversion error: {e}")
         print(f"Stderr: {e.stderr}")
         raise
     except FileNotFoundError:
@@ -244,7 +244,7 @@ def convert_excel_to_pdf(input_path: str, output_path: str):
     df = df.dropna(how='all', axis=0)  # removing empty lines
     df = df.dropna(how='all', axis=1)  # removing empty columns
     
-    print(f"Размер таблицы: {df.shape}")
+    print(f"Table size: {df.shape}")
     
     if df.empty or df.shape[0] == 0 or df.shape[1] == 0:
         raise ValueError("Excel файл не содержит данных")
@@ -277,7 +277,7 @@ def convert_excel_to_pdf(input_path: str, output_path: str):
         pdf.savefig(fig, bbox_inches='tight', dpi=150)
     
     plt.close()
-    print(f"✅ PDF сохранен: {output_path}")
+    print(f"PDF saved: {output_path}")
 
 # nukes all files in the specified directory except those specified in neccesary_files.
 def delete_extra_files(path: str, Neccesary_files: List[str]):
@@ -305,13 +305,13 @@ def delete_extra_files(path: str, Neccesary_files: List[str]):
             file_path = os.path.join(path, file)
             try:
                 os.remove(file_path)
-                print(f"Удален: {file}")
+                print(f"Deleted: {file}")
                 deleted_count += 1
             except Exception as e:
-                print(f"Ошибка при удалении '{file}': {e}")
+                print(f"Error deleting '{file}': {e}")
     
-    print(f"\nУдалено файлов: {deleted_count}")
-    print(f"Сохранено файлов: {len(necessary_set & set(all_files))}")
+    print(f"\nDeleted files: {deleted_count}")
+    print(f"Saved files: {len(necessary_set & set(all_files))}")
 
 # peeks at if the file contains at least one keyword.supported formats: .txt, .docx, .pdf, .xlsx, .odt, .ods, .rtf
 def check_keywords_in_file(file_path: str, keywords_pattern: re.Pattern = KEYWORDS_PATTERN) -> bool:
@@ -342,7 +342,7 @@ def check_keywords_in_file(file_path: str, keywords_pattern: re.Pattern = KEYWOR
                 else:
                     return False
             except ImportError:
-                print("⚠️ python-docx не установлен. Установите: pip install python-docx")
+                print("python-docx not installed. Run: pip install python-docx")
                 return False
         
         # pdf
@@ -355,7 +355,7 @@ def check_keywords_in_file(file_path: str, keywords_pattern: re.Pattern = KEYWOR
                     text += page.extract_text() or ''
                 return bool(keywords_pattern.search(text[:1024*1024]))
             except ImportError:
-                print("⚠️ pypdf не установлен. Установите: pip install pypdf")
+                print("pypdf not installed. Run: pip install pypdf")
                 return False
         
         # excel
@@ -408,17 +408,17 @@ def check_keywords_in_file(file_path: str, keywords_pattern: re.Pattern = KEYWOR
                 wb.close()
                 return False     
             except ImportError:
-                print("⚠️ openpyxl не установлен. Установите: pip install openpyxl")
+                print("openpyxl not installed. Run: pip install openpyxl")
                 return False
             except Exception as e:
-                print(f"⚠️ Ошибка чтения Excel {file_path}: {e}")
+                print(f"Excel read error {file_path}: {e}")
                 return False
         else:
             # unsupported format, skip
             return False
             
     except Exception as e:
-        print(f"⚠️ Ошибка при чтении {file_path}: {e}")
+        print(f"Error reading {file_path}: {e}")
         return False
 
 # peeks at if the file name contains at least one keyword.
@@ -438,16 +438,16 @@ def find_files_with_keywords(
     matched_files: List[str] = []
     
     for file_name in file_list:
-        print(f"🔍 Проверяем: {os.path.basename(file_name)}")
+        print(f"Checking: {os.path.basename(file_name)}")
         if (check_filename_for_keywords(file_name)):
             matched_files.append(file_name)
-            print(f"   ✅ Найдены ключевые слова" )
+            print(f"Keywords found" )
             continue
 
-        print(f"🔍 Проверяем внутренности файла: {os.path.basename(file_name)}")
+        print(f"Checking file internals: {os.path.basename(file_name)}")
         if (check_keywords_in_file(path + '/' + file_name)):
             matched_files.append(file_name)
-            print(f"   ✅ Найдены ключевые слова")
+            print(f"Keywords found")
 
 
     print(matched_files)
@@ -470,7 +470,7 @@ def read_tenders_info(filename: str) -> List[Tuple[Any, Any, int]]:
 # chews through all pdf files from the tender folder and stashes them in the database.if there are several pdfs in the folder, all their positions will be included in one tender (via upsert in save_tender_to_db).when restarted, old tender positions are deleted and written over again (see db.save_tender_to_db).
 def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: str = None):
     if not os.path.exists(folder_path):
-        print(f"Папки {folder_path} не найдено")
+        print(f"Folder {folder_path} not found")
         return
 
     if tender_number is None:
@@ -491,7 +491,7 @@ def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: st
             continue
 
         pdf_path = os.path.join(folder_path, file)
-        print(f"🤖 Парсим pdf: {pdf_path}")
+        print(f"Parsing pdf: {pdf_path}")
 
         try:
             parsed = parse_pdf_to_json(pdf_path)
@@ -502,10 +502,10 @@ def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: st
             all_items.extend(items)
             processed_pdfs.append(file)
         except Exception as e:
-            print(f"❌ Не удалось распарсить {pdf_path}: {e}")
+            print(f"Failed to parse {pdf_path}: {e}")
 
     if not all_items:
-        print(f"⚠️ В папке {folder_path} нет распарсенных позиций, в БД ничего не пишу")
+        print(f"In folder {folder_path} no parsed positions, writing nothing to DB")
         return
 
     merged = {"items": all_items}
@@ -518,13 +518,13 @@ def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: st
     )
 
     if db_id is not None:
-        print(f"💾 Тендер {tender_number} → r_luxai.tenders.id={db_id}, позиций: {len(all_items)}")
+        print(f"Tender {tender_number} → r_luxai.tenders.id={db_id}, positions: {len(all_items)}")
     else:
-        print(f"❌ Сохранение тендера {tender_number} в БД не удалось")
+        print(f"Saving tender {tender_number} to DB failed")
 
 def rename_all_files_in_folder(folder_path: str, tender_id: str):
     if not os.path.exists(folder_path):
-        print(f"Папки {folder_path} не найдено")
+        print(f"Folder {folder_path} not found")
         return
 
     files_in_folder = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
@@ -548,7 +548,7 @@ def file_filter():
         if (flag != "False"):
             continue
 
-        print(f"Рассматриваем файлы тендера {number}")
+        print(f"Examining files for tender {number}")
 
         folder_path: str = os.path.join("./tenders_files", number)
         if not os.path.exists(folder_path) or not os.path.isdir(folder_path):
