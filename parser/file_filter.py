@@ -596,8 +596,6 @@ def file_filter():
 
         rename_all_files_in_folder(folder_path, number)
 
-        import_pdf_files_from_folder_to_database(folder_path)
-
         ws.cell(row=row_num, column=11, value='True')
         ws.cell(row=row_num, column=11).fill = green_fill
 
