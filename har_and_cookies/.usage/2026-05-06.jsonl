@@ -1,0 +1,16 @@
+{"user": null, "model": "", "provider": "OperaAria", "completion_tokens": 14, "prompt_tokens": 15, "total_tokens": 29}
+{"user": null, "model": "gpt-5-nano-2025-08-07", "provider": "PollinationsAI", "completion_tokens": 1865, "completion_tokens_details": {"accepted_prediction_tokens": 0, "audio_tokens": 0, "reasoning_tokens": 1472, "rejected_prediction_tokens": 0}, "prompt_tokens": 49, "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0}, "total_tokens": 1914}
+{"user": null, "model": "MiniMaxAI/MiniMax-M2.5", "provider": "DeepInfra", "prompt_tokens": 532, "total_tokens": 653, "completion_tokens": 121, "estimated_cost": 0.00021895, "prompt_tokens_details": {"cached_tokens": 0, "cache_write_tokens": null}}
+{"user": null, "model": "", "provider": "OperaAria", "completion_tokens": 299, "prompt_tokens": 539, "total_tokens": 838}
+{"user": null, "model": "gpt-5-nano-2025-08-07", "provider": "PollinationsAI", "completion_tokens": 3610, "completion_tokens_details": {"accepted_prediction_tokens": 0, "audio_tokens": 0, "reasoning_tokens": 3136, "rejected_prediction_tokens": 0}, "prompt_tokens": 1307, "prompt_tokens_details": {"audio_tokens": 0, "cached_tokens": 0}, "total_tokens": 4917}
+{"user": null, "model": "", "provider": "Qwen", "characters": 0, "total_tokens": 7940, "input_tokens_details": {"text_tokens": 101, "image_tokens": 72}, "image_tokens": 72, "cached_tokens": 0, "prompt_tokens": 173, "completion_tokens": 7767, "text_tokens": 609, "reasoning_tokens": 7158}
+{"user": null, "model": "", "provider": "Qwen", "total_tokens": 1531, "prompt_tokens": 342, "completion_tokens": 1189, "reasoning_tokens": 1098}
+{"user": null, "model": "", "provider": "Qwen", "total_tokens": 1893, "prompt_tokens": 697, "completion_tokens": 1196, "reasoning_tokens": 1106}
+{"user": null, "model": "", "provider": "Qwen", "total_tokens": 1882, "prompt_tokens": 803, "completion_tokens": 1079, "reasoning_tokens": 900}
+{"user": null, "model": "", "provider": "Qwen", "total_tokens": 2432, "prompt_tokens": 1086, "completion_tokens": 1346, "reasoning_tokens": 1135}
+{"user": null, "model": "", "provider": "Qwen", "total_tokens": 4170, "prompt_tokens": 1313, "completion_tokens": 2857, "reasoning_tokens": 2767}
+{"user": null, "model": "", "provider": "Qwen", "total_tokens": 2127, "prompt_tokens": 321, "completion_tokens": 1806, "reasoning_tokens": 1793}
+{"user": null, "model": "", "provider": "Qwen", "total_tokens": 3693, "prompt_tokens": 2053, "completion_tokens": 1640, "reasoning_tokens": 1221}
+{"user": null, "model": "", "provider": "Qwen", "total_tokens": 4244, "prompt_tokens": 2705, "completion_tokens": 1539, "reasoning_tokens": 1213}
+{"user": null, "model": "", "provider": "Qwen", "total_tokens": 5322, "prompt_tokens": 2095, "completion_tokens": 3227, "reasoning_tokens": 2157}
+{"user": null, "model": "", "provider": "Qwen", "total_tokens": 5513, "prompt_tokens": 3390, "completion_tokens": 2123, "reasoning_tokens": 1037}

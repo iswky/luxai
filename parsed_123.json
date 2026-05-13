@@ -1,0 +1,276 @@
+{
+  "document_type": "procurement_object_description",
+  "title": "Описание объекта закупки на поставку интерактивных комплексов",
+  "currency": "RUB",
+  "source_file": "123.pdf",
+  "items": [
+    {
+      "position_number": 1,
+      "name": "Цифровая лаборатория для школьников",
+      "quantity": 1,
+      "unit": "шт",
+      "product_type": "Цифровая лаборатория",
+      "category": "Учебное оборудование",
+      "requirements_summary": "Цифровая лаборатория для школьников начального общего образования по предметной области естествознание. В комплект входят датчики температуры окружающей среды, освещенности, электрического напряжения, pH, магнитного поля, абсолютного давления, звука и пульса, программное обеспечение, методическое руководство и мобильная система хранения.",
+      "key_requirements": {
+        "user_type": "Обучающийся",
+        "education_level": "Начальное общее",
+        "subject_area": "Естествознание / Окружающий мир",
+        "software": true,
+        "manual": true,
+        "storage_system": true,
+        "sensors": [
+          "Датчик температуры окружающей среды",
+          "Датчик освещенности",
+          "Датчик электрического напряжения",
+          "Датчик уровня pH",
+          "Датчик магнитного поля",
+          "Датчик абсолютного давления",
+          "Датчик звука",
+          "Датчик пульса"
+        ]
+      }
+    },
+    {
+      "position_number": 2,
+      "name": "Профессиональный мультимедийный интерактивный комплекс ПДД",
+      "quantity": 1,
+      "unit": "шт",
+      "product_type": "Интерактивный комплекс",
+      "category": "Мультимедийное учебное оборудование",
+      "requirements_summary": "Мультимедийная система с сенсорной панелью, встроенным компьютером и акустической системой для изучения правил дорожного движения, ОБЖ и развития логического мышления у детей.",
+      "key_requirements": {
+        "modules_count": 3,
+        "material": "ЛДСП толщиной не менее 16 мм",
+        "touch_panel": true,
+        "touch_points_min": 10,
+        "screen_resolution_min": "1920x1080",
+        "ram_min_gb": 8,
+        "storage_min_gb": 120,
+        "cpu_min": "Intel Core i3",
+        "software_sections": [
+          "ПДД",
+          "ОБЖ",
+          "Интерактивное учебное пособие",
+          "Ранняя профориентация",
+          "ОБЗР"
+        ]
+      }
+    },
+    {
+      "position_number": 3,
+      "name": "Интерактивная проекционная система",
+      "quantity": 1,
+      "unit": "шт",
+      "product_type": "Интерактивная проекционная система",
+      "category": "Интерактивное оборудование",
+      "requirements_summary": "Стационарная интерактивная проекционная система с металлическим корпусом, встроенным датчиком детекции, компьютером, проектором, ПО, методическим пособием и крепежной рамкой.",
+      "key_requirements": {
+        "equipment_type": "Стационарный",
+        "case_material": "Металл",
+        "projector": true,
+        "built_in_computer": true,
+        "keyboard_mouse": true,
+        "projection_length_m": ">= 4.5 и < 5",
+        "projection_height_m": ">= 2.5 и < 3.1",
+        "camera_resolution_min": "1920x1080",
+        "camera_scan_rate_min_fps": 30,
+        "contrast": ">= 20000:1 и < 30000:1",
+        "brightness_lm": ">= 3000 и < 4000",
+        "ram_min_gb": 8,
+        "ssd_min_gb": 240,
+        "hdmi_ports_min": 2
+      }
+    },
+    {
+      "position_number": 4,
+      "name": "Методический образовательный комплекс для повышения грамотности об окружающем мире",
+      "quantity": 1,
+      "unit": "шт",
+      "product_type": "Методический образовательный комплекс",
+      "category": "Образовательное оборудование",
+      "requirements_summary": "Комплекс для знакомства детей с государствами, столицами, флагами, денежными единицами, культурой и искусством. Включает интерактивное программное обеспечение, интерактивный глобус, планшетный компьютер и интерактивную панель.",
+      "key_requirements": {
+        "software": true,
+        "interactive_globe": true,
+        "tablet": true,
+        "interactive_panel": true,
+        "quiz_questions_min": 100,
+        "multitouch_points_min": 132,
+        "tablet_screen_min_inches": 10.95,
+        "tablet_ram_min_gb": 8,
+        "tablet_storage_min_gb": 128,
+        "tablet_battery_min_mah": 7200
+      }
+    },
+    {
+      "position_number": 5,
+      "name": "Комплект цифрового оборудования по географии",
+      "quantity": 1,
+      "unit": "шт",
+      "product_type": "Цифровое оборудование",
+      "category": "География / лабораторное оборудование",
+      "requirements_summary": "Комплект цифрового оборудования для географических исследований и экологического мониторинга. Включает датчики температуры, магнитного поля, pH, абсолютного давления, расстояния, электропроводности, звука, комплект беспроводной передачи данных, USB-кабели, ПО, методические рекомендации и систему хранения.",
+      "key_requirements": {
+        "temperature_sensor": true,
+        "magnetic_field_sensor": true,
+        "ph_sensor": true,
+        "absolute_pressure_sensor": true,
+        "ultrasonic_distance_sensor": true,
+        "conductivity_sensor": true,
+        "sound_sensor": true,
+        "wireless_data_kit": true,
+        "usb_cables_min": 2,
+        "software_flash_drive": true,
+        "methodical_recommendations": true,
+        "storage_system": true
+      }
+    },
+    {
+      "position_number": 6,
+      "name": "Цифровая лаборатория по математике",
+      "quantity": 1,
+      "unit": "шт",
+      "product_type": "Цифровая лаборатория",
+      "category": "Математика / лабораторное оборудование",
+      "requirements_summary": "Цифровая лаборатория по математике базового уровня для изучения функциональных зависимостей через измерение физических процессов. Включает датчики давления, расстояния, освещенности, напряжения, тока, оптоэлектрический датчик, оборудование для опытов, методическое руководство, ПО и систему хранения.",
+      "key_requirements": {
+        "absolute_pressure_sensor": true,
+        "ultrasonic_distance_sensor": true,
+        "light_sensor": true,
+        "oscilloscope_voltage_sensor": true,
+        "optoelectronic_sensor": true,
+        "current_sensor": true,
+        "usb_cables_min": 2,
+        "experiment_equipment_set": true,
+        "methodical_manual": true,
+        "software_flash_drive": true,
+        "storage_system": true
+      }
+    },
+    {
+      "position_number": 7,
+      "name": "Цифровая лаборатория для начальных классов по естествознанию",
+      "quantity": 1,
+      "unit": "шт",
+      "product_type": "Цифровая лаборатория",
+      "category": "Естествознание / начальная школа",
+      "requirements_summary": "Комплект учителя для проведения исследовательских занятий естественнонаучной направленности. Включает цифровую лабораторию для начальной школы, наборы по оптике, механике, химии, электричеству, мыльным пузырям и стойку для контейнеров.",
+      "key_requirements": {
+        "teacher_kit": true,
+        "primary_school_lab": true,
+        "optics_set": true,
+        "mechanics_set": true,
+        "chemistry_experiments_set": true,
+        "electricity_set": true,
+        "soap_bubbles_set": true,
+        "container_rack_min": 6
+      }
+    },
+    {
+      "position_number": 8,
+      "name": "Цифровая лаборатория по биологии (полевая)",
+      "quantity": 8,
+      "unit": "шт",
+      "product_type": "Цифровая лаборатория",
+      "category": "Биология / полевая лаборатория",
+      "requirements_summary": "Полевая цифровая лаборатория по биологии для измерения параметров окружающей среды. Включает датчики влажности, освещенности, pH, электропроводности, температуры, USB-кабели, цифровой микроскоп, электронные весы, программный модуль, методическое руководство и рюкзак.",
+      "key_requirements": {
+        "humidity_sensor": true,
+        "light_sensor": true,
+        "ph_sensor": true,
+        "conductivity_sensor": true,
+        "temperature_sensor": true,
+        "usb_cables_min": 2,
+        "digital_microscope": true,
+        "electronic_scales": true,
+        "software_flash_drive": true,
+        "methodical_manual": true,
+        "backpack": true
+      }
+    },
+    {
+      "position_number": 9,
+      "name": "Интерактивный пол",
+      "quantity": 1,
+      "unit": "шт",
+      "product_type": "Интерактивный пол",
+      "category": "Интерактивное проекционное оборудование",
+      "requirements_summary": "Мобильное интерактивное оборудование для проекции на пол. В комплект входят проектор, компьютер, датчик камер глубины, программное обеспечение, клавиатура, специальное напольное покрытие и методическое пособие.",
+      "key_requirements": {
+        "equipment_type": "Мобильный",
+        "wall_mode": false,
+        "floor_projection": true,
+        "projector_type": "Ламповый",
+        "cpu_type": "6-ядерный",
+        "ram_min_gb": 8,
+        "height_mm": ">= 1500 и < 1800",
+        "projection_length_m": "< 2.5",
+        "projection_width_m": "< 2",
+        "floor_cover_area_m2": ">= 2.5 и < 5.0",
+        "brightness_lm": ">= 3000 и < 4000",
+        "contrast": ">= 30000:1 и < 50000:1",
+        "software_features": [
+          "Плейлист",
+          "Комплекс занятий на физическое развитие",
+          "Комплекс занятий на речевое развитие",
+          "Комплекс занятий на познавательное развитие",
+          "Комплекс занятий на художественно-эстетическое развитие",
+          "Комплекс занятий на социально-коммуникативное развитие",
+          "Комплекс занятий для снятия психо-эмоционального напряжения",
+          "Дидактические игры",
+          "Конструктор занятий",
+          "Командные режимы до 8 человек",
+          "Автоматическая калибровка и настройка"
+        ]
+      }
+    },
+    {
+      "position_number": 10,
+      "name": "Интерактивная проекционная стена",
+      "quantity": 1,
+      "unit": "шт",
+      "product_type": "Интерактивная проекционная стена",
+      "category": "Интерактивное проекционное оборудование",
+      "requirements_summary": "Стационарная интерактивная проекционная стена с металлическим корпусом, встроенным датчиком детекции, компьютером, проектором, развивающим ПО, методическим пособием и крепежной рамкой.",
+      "key_requirements": {
+        "equipment_type": "Стационарный",
+        "case_material": "Металл",
+        "projector": true,
+        "built_in_computer": true,
+        "keyboard_mouse": true,
+        "projection_length_m": ">= 4.5 и < 5",
+        "projection_height_m": ">= 2.5 и < 3.1",
+        "camera_resolution_min": "1920x1080",
+        "camera_scan_rate_min_fps": 30,
+        "contrast": ">= 20000:1 и < 30000:1",
+        "brightness_lm": ">= 3000 и < 4000",
+        "cpu_type": "4-ядерный",
+        "cpu_frequency_min_ghz": 3.5,
+        "ram_min_gb": 8,
+        "ssd_min_gb": 240,
+        "hdmi_ports_min": 2,
+        "usb_2_0": true,
+        "wifi_standards": [
+          "IEEE 802.11n",
+          "IEEE 802.11g",
+          "IEEE 802.11b"
+        ],
+        "software_features": [
+          "Считывание касаний человека с поверхности проекции",
+          "Считывание касания руками и мячами без стилусов",
+          "Калибровка и настройка",
+          "Запуск игровых эффектов вручную или по расписанию",
+          "Редактирование расписания",
+          "Дистанционный запуск игр с сенсорного планшета без интернета",
+          "Развивающее ПО «Кидалки-Обучалки» или аналог",
+          "Редактор Методист"
+        ]
+      }
+    }
+  ],
+  "totals": {
+    "positions_count": 10,
+    "total_quantity_units": 17
+  }
+}

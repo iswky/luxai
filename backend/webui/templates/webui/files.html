@@ -1,0 +1,84 @@
+<!-- webui/templates/webui/files.html -->
+
+{% extends 'webui/base.html' %}
+
+{% block title %}Обработанные файлы{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="section-kicker">Files Center</div>
+        <h1>Обработанные файлы</h1>
+    </div>
+
+    <div class="header-chip">
+        {{ files|length }} файла
+    </div>
+</div>
+
+<div class="files-grid">
+    {% for file in files %}
+        <article class="file-card">
+            <div class="card-topline"></div>
+
+            <div class="file-card-header">
+                <div>
+                    <div class="file-type">DOCUMENT</div>
+                    <h3>{{ file.name }}</h3>
+                </div>
+
+                <span class="status-badge status-{{ file.status|lower }}">
+                    {{ file.status }}
+                </span>
+            </div>
+
+            <div class="file-meta">
+                <div class="meta-item">
+                    <span>Источник</span>
+                    <strong>{{ file.source }}</strong>
+                </div>
+
+                <div class="meta-item">
+                    <span>Уверенность</span>
+                    <strong>{{ file.confidence }}</strong>
+                </div>
+
+                <div class="meta-item meta-wide">
+                    <span>Комментарий</span>
+                    <strong>{{ file.comment }}</strong>
+                </div>
+            </div>
+
+            <a
+                href="{{ file.application_file }}"
+                target="_blank"
+                class="btn-neon btn-neon-primary btn-full"
+            >
+                Открыть PDF заявки
+            </a>
+
+            <form
+                method="post"
+                action="{% url 'update_prompt' file.id %}"
+                class="prompt-form"
+            >
+                {% csrf_token %}
+
+                <label for="parse_prompt_{{ file.id }}">
+                    Промпт для парсинга
+                </label>
+
+                <textarea
+                    id="parse_prompt_{{ file.id }}"
+                    name="parse_prompt"
+                    rows="5"
+                >{{ file.parse_prompt }}</textarea>
+
+                <button type="submit" class="btn-neon btn-neon-secondary btn-full">
+                    Сохранить промпт
+                </button>
+            </form>
+        </article>
+    {% endfor %}
+</div>
+{% endblock %}

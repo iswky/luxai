@@ -1,0 +1,67 @@
+<!-- webui/templates/webui/equipment.html -->
+
+{% extends 'webui/base.html' %}
+
+{% block title %}Сравнение оборудования{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="section-kicker">Compare Mode</div>
+        <h1>Сравнение оборудования</h1>
+    </div>
+
+    <div class="header-chip">
+        {{ equipment|length }} позиции
+    </div>
+</div>
+
+<div class="compare-panel">
+    <div class="card-topline"></div>
+
+    <div class="table-responsive">
+        <table class="compare-table">
+            <thead>
+                <tr>
+                    <th>Поставщик</th>
+                    <th>Позиция</th>
+                    <th>Категория</th>
+                    <th>Файл заявки</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                {% for item in equipment %}
+                    <tr>
+                        <td>
+                            <div class="supplier-cell">
+                                <span class="supplier-avatar">
+                                    {{ item.supplier|slice:":1" }}
+                                </span>
+                                <span>{{ item.supplier }}</span>
+                            </div>
+                        </td>
+
+                        <td>{{ item.item }}</td>
+                        <td>
+                            <span class="category-pill">
+                                {{ item.category }}
+                            </span>
+                        </td>
+
+                        <td>
+                            <a
+                                href="{{ item.application_file }}"
+                                target="_blank"
+                                class="btn-neon btn-neon-primary btn-table"
+                            >
+                                Открыть PDF
+                            </a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

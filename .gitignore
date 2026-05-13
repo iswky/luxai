@@ -5,7 +5,8 @@ __pycache__/
 
 # C extensions
 *.so
-
+*.gguf
+har_and_cookies/
 parser/tenders_files/
 
 # Distribution / packaging

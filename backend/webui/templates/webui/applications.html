@@ -1,0 +1,76 @@
+<!-- webui/templates/webui/applications.html -->
+
+{% extends 'webui/base.html' %}
+
+{% block title %}Разбор заявок{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <div class="section-kicker">Application Parser</div>
+        <h1>Разбор заявок</h1>
+    </div>
+
+    <div class="header-chip">
+        {{ applications|length }} заявки
+    </div>
+</div>
+
+<div class="applications-grid">
+    {% for application in applications %}
+        <article class="application-card">
+            <div class="card-topline"></div>
+
+            <div class="application-card-head">
+                <div>
+                    <div class="file-type">{{ application.number }}</div>
+                    <h3>{{ application.title }}</h3>
+                </div>
+
+                <span class="status-badge">
+                    {{ application.status }}
+                </span>
+            </div>
+
+            <div class="application-info-grid">
+                <div class="meta-item">
+                    <span>Заказчик</span>
+                    <strong>{{ application.customer }}</strong>
+                </div>
+
+                <div class="meta-item">
+                    <span>Дедлайн</span>
+                    <strong>{{ application.deadline }}</strong>
+                </div>
+
+                <div class="meta-item">
+                    <span>Сумма</span>
+                    <strong>{{ application.price }}</strong>
+                </div>
+
+                <div class="meta-item">
+                    <span>Товаров</span>
+                    <strong>{{ application.items|length }}</strong>
+                </div>
+            </div>
+
+            <div class="application-actions">
+                <a
+                    href="{% url 'application_detail_page' application.id %}"
+                    class="btn-neon btn-neon-primary btn-full"
+                >
+                    Разобрать заявку
+                </a>
+
+                <a
+                    href="{{ application.file }}"
+                    target="_blank"
+                    class="btn-neon btn-neon-secondary btn-full"
+                >
+                    Открыть PDF
+                </a>
+            </div>
+        </article>
+    {% endfor %}
+</div>
+{% endblock %}

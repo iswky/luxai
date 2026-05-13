@@ -1,0 +1,121 @@
+<!-- webui/templates/webui/contract.html -->
+
+{% extends 'webui/base.html' %}
+
+{% block title %}Договор по закупке{% endblock %}
+
+{% block content %}
+<div class="contract-layout">
+    <section class="contract-preview">
+        <div class="card-topline"></div>
+
+        <div class="contract-header">
+            <div>
+                <div class="section-kicker">Contract Builder</div>
+                <h1>Договор на закупку</h1>
+            </div>
+
+            <button class="btn-neon btn-neon-primary" onclick="window.print()">
+                Распечатать
+            </button>
+        </div>
+
+        <div class="contract-document">
+            <h2>Договор поставки</h2>
+
+            <p>
+                Настоящий договор сформирован на основании заявки
+                <strong>{{ application.number }}</strong>
+                по закупке:
+                <strong>{{ application.title }}</strong>.
+            </p>
+
+            <div class="contract-row">
+                <span>Заказчик</span>
+                <strong>{{ application.customer }}</strong>
+            </div>
+
+            <div class="contract-row">
+                <span>Срок подачи</span>
+                <strong>{{ application.deadline }}</strong>
+            </div>
+
+            <div class="contract-row">
+                <span>Начальная сумма закупки</span>
+                <strong>{{ application.price }}</strong>
+            </div>
+
+            <h3>Выбранные позиции</h3>
+
+            {% if selected_items %}
+                <table class="contract-table">
+                    <thead>
+                        <tr>
+                            <th>Товар</th>
+                            <th>Количество</th>
+                            <th>Поставщик</th>
+                            <th>Цена</th>
+                            <th>Доставка</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for row in selected_items %}
+                            <tr>
+                                <td>{{ row.item.name }}</td>
+                                <td>{{ row.item.quantity }}</td>
+                                <td>{{ row.shop.name }}</td>
+                                <td>{{ row.shop.price }}</td>
+                                <td>{{ row.shop.delivery }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="empty-contract">
+                    Пока не выбран ни один поставщик.
+                    Вернись назад и нажми “Выбрать” у подходящих вариантов.
+                </div>
+            {% endif %}
+
+            <div class="contract-signatures">
+                <div>
+                    <span>Заказчик</span>
+                    <div class="signature-line"></div>
+                </div>
+
+                <div>
+                    <span>Исполнитель</span>
+                    <div class="signature-line"></div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <aside class="contract-side">
+        <div class="card-topline"></div>
+
+        <div class="section-kicker">Actions</div>
+        <h2>Действия</h2>
+
+        <a
+            href="{% url 'application_detail_page' application.id %}"
+            class="btn-neon btn-neon-secondary btn-full"
+        >
+            Назад к выбору
+        </a>
+
+        <a
+            href="{{ application.file }}"
+            target="_blank"
+            class="btn-neon btn-neon-secondary btn-full"
+        >
+            Открыть PDF заявки
+        </a>
+
+        <button class="btn-neon btn-neon-primary btn-full" onclick="window.print()">
+            Скачать / печать договора
+        </button>
+    </aside>
+</div>
+{% endblock %}
