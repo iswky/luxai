@@ -52,10 +52,19 @@ def equipment_page(request):
 
 
 def applications_page(request):
-    applications = fetch_applications()
+    filters = {
+        'date_from': request.GET.get('date_from') or '',
+        'date_to': request.GET.get('date_to') or '',
+        'status': request.GET.get('status') or '',
+        'price_from': request.GET.get('price_from') or '',
+        'price_to': request.GET.get('price_to') or '',
+    }
+
+    applications = fetch_applications(filters)
 
     return render(request, 'webui/applications.html', {
         'applications': applications,
+        'filters': filters,
     })
 
 
@@ -78,7 +87,13 @@ def select_shop(request, application_id):
         if application_id not in SELECTED_SHOPS:
             SELECTED_SHOPS[application_id] = {}
 
-        SELECTED_SHOPS[application_id][item_id] = shop_id
+        current_selected_shop_id = SELECTED_SHOPS[application_id].get(item_id)
+
+        if current_selected_shop_id == shop_id:
+            del SELECTED_SHOPS[application_id][item_id]
+
+        else:
+            SELECTED_SHOPS[application_id][item_id] = shop_id
 
     return redirect('application_detail_page', application_id=application_id)
 

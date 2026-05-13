@@ -112,6 +112,19 @@
                                     {% endfor %}
                                 </div>
                             {% endif %}
+                            {% if item.components %}
+                                <div class="components-list">
+                                    <div class="components-title">Комплектация / состав</div>
+
+                                    <div class="components-grid">
+                                        {% for component in item.components %}
+                                            <div class="component-chip">
+                                                {{ component.name }}
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% endif %}
                         </div>
                     </div>
 
@@ -161,7 +174,7 @@
                                                 class="btn-neon {% if selected_shops|get_item:item.id == shop.id %}btn-selected{% else %}btn-neon-secondary{% endif %} btn-shop"
                                             >
                                                 {% if selected_shops|get_item:item.id == shop.id %}
-                                                    По кайфу ✓
+                                                    Убрать
                                                 {% else %}
                                                     Выбрать
                                                 {% endif %}

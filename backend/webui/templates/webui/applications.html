@@ -16,6 +16,98 @@
     </div>
 </div>
 
+<form method="get" action="{% url 'applications_page' %}" class="filters-panel">
+    <div class="filter-field">
+        <label>Дата от</label>
+        <input
+            type="date"
+            name="date_from"
+            value="{{ filters.date_from }}"
+        >
+    </div>
+
+    <div class="filter-field">
+        <label>Дата до</label>
+        <input
+            type="date"
+            name="date_to"
+            value="{{ filters.date_to }}"
+        >
+    </div>
+
+    <div class="filter-field">
+        <label>Статус</label>
+        <select name="status">
+            <option value="">Все статусы</option>
+
+            <option
+                value="new"
+                {% if filters.status == 'new' %}selected{% endif %}
+            >
+                new
+            </option>
+
+            <option
+                value="AI разобрал заявку"
+                {% if filters.status == 'AI разобрал заявку' %}selected{% endif %}
+            >
+                AI разобрал заявку
+            </option>
+
+            <option
+                value="Готово к разбору"
+                {% if filters.status == 'Готово к разбору' %}selected{% endif %}
+            >
+                Готово к разбору
+            </option>
+
+            <option
+                value="Новая заявка"
+                {% if filters.status == 'Новая заявка' %}selected{% endif %}
+            >
+                Новая заявка
+            </option>
+
+            <option
+                value="На проверке"
+                {% if filters.status == 'На проверке' %}selected{% endif %}
+            >
+                На проверке
+            </option>
+        </select>
+    </div>
+
+    <div class="filter-field">
+        <label>Цена от</label>
+        <input
+            type="number"
+            name="price_from"
+            placeholder="0"
+            value="{{ filters.price_from }}"
+        >
+    </div>
+
+    <div class="filter-field">
+        <label>Цена до</label>
+        <input
+            type="number"
+            name="price_to"
+            placeholder="5000000"
+            value="{{ filters.price_to }}"
+        >
+    </div>
+
+    <div class="filter-actions">
+        <button type="submit" class="btn-neon btn-neon-primary">
+            Применить
+        </button>
+
+        <a href="{% url 'applications_page' %}" class="btn-neon btn-neon-secondary">
+            Сбросить
+        </a>
+    </div>
+</form>
+
 <div class="applications-grid">
     {% for application in applications %}
         <article class="application-card">
@@ -71,6 +163,10 @@
                 </a>
             </div>
         </article>
+    {% empty %}
+        <div class="empty-contract">
+            Заявок по выбранным фильтрам не найдено.
+        </div>
     {% endfor %}
 </div>
 {% endblock %}
