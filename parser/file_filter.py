@@ -4,6 +4,7 @@ from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.workbook.workbook import Workbook
 from openpyxl.styles import PatternFill
 from llm import parse_pdf_to_json
+from db import save_tender_to_db
 import os
 import re
 
@@ -533,20 +534,70 @@ def read_tenders_info(filename: str) -> List[Tuple[Any, Any, int]]:
 
     return pairs
         
-def import_pdf_files_from_folder_to_database(folder_path: str):
+def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: str = None):
+    """
+    Парсит все PDF-файлы из папки тендера и сохраняет их в БД.
 
+    Если в папке несколько PDF — все их позиции попадут в один тендер
+    (по UPSERT в save_tender_to_db). При повторном запуске старые позиции
+    тендера сносятся и записываются заново (см. db.save_tender_to_db).
+
+    Args:
+        folder_path: путь до папки с pdf-файлами тендера
+        tender_number: номер тендера (если не передан — берём имя папки)
+    """
     if not os.path.exists(folder_path):
         print(f"Папки {folder_path} не найдено")
         return
 
-    files_in_folder = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+    if tender_number is None:
+        tender_number = os.path.basename(os.path.normpath(folder_path))
+
+    files_in_folder = [
+        f for f in os.listdir(folder_path)
+        if os.path.isfile(os.path.join(folder_path, f))
+    ]
+
+    # Накапливаем items со всех pdf этого тендера, чтобы записать одним UPSERT'ом
+    all_items: List[dict] = []
+    processed_pdfs: List[str] = []
 
     for file in files_in_folder:
-        file_extension = os.path.splitext(file)[1]
+        file_extension = os.path.splitext(file)[1].lower()
+        if file_extension != '.pdf':
+            continue
 
-        if file_extension == '.pdf':
-            for_dimasik = parse_pdf_to_json(folder_path + file)
-            # Дима, здесь возвращается json pdf-файла, ты его должен записать в бд
+        pdf_path = os.path.join(folder_path, file)
+        print(f"🤖 Парсим pdf: {pdf_path}")
+
+        try:
+            parsed = parse_pdf_to_json(pdf_path)
+            items = parsed.get("items", []) or []
+            # Помечаем, из какого файла пришла каждая позиция
+            for item in items:
+                item.setdefault("_source_pdf", file)
+            all_items.extend(items)
+            processed_pdfs.append(file)
+        except Exception as e:
+            print(f"❌ Не удалось распарсить {pdf_path}: {e}")
+
+    if not all_items:
+        print(f"⚠️ В папке {folder_path} нет распарсенных позиций, в БД ничего не пишу")
+        return
+
+    merged = {"items": all_items}
+    pdf_source = ", ".join(processed_pdfs) if processed_pdfs else None
+
+    db_id = save_tender_to_db(
+        tender_number=tender_number,
+        parsed_json=merged,
+        pdf_source_file=pdf_source,
+    )
+
+    if db_id is not None:
+        print(f"💾 Тендер {tender_number} → r_luxai.tenders.id={db_id}, позиций: {len(all_items)}")
+    else:
+        print(f"❌ Сохранение тендера {tender_number} в БД не удалось")
 
 
 
@@ -556,15 +607,13 @@ def file_filter():
     wb: Workbook = load_workbook("tenders.xlsx")
     ws: Worksheet = wb.active
 
-    i = 2
     for number, flag, row_num in tenders_info:
         if (flag != "False"):
-            i += 1
             continue
 
         print(f"Рассматриваем файлы тендера {number}")
 
-        folder_path: str = "./tenders_files/" + number
+        folder_path: str = os.path.join("./tenders_files", number)
         if not os.path.exists(folder_path) or not os.path.isdir(folder_path):
             continue
 
@@ -580,7 +629,11 @@ def file_filter():
 
         delete_files(folder_path, files_in_folder)
 
-        import_pdf_files_from_folder_to_database(folder_path)
+        # tender_number в Excel хранится с 2-символьным префиксом (см. read_tenders_info: value[2:]),
+        # а folder_path / number — уже без префикса. В БД сохраняем полный номер из Excel,
+        # для этого восстановим его из ws.
+        full_tender_number = ws.cell(row=row_num, column=1).value
+        import_pdf_files_from_folder_to_database(folder_path, tender_number=str(full_tender_number))
 
         ws.cell(row=row_num, column=11, value='True')
         ws.cell(row=row_num, column=11).fill = green_fill
@@ -588,6 +641,10 @@ def file_filter():
         wb.save("tenders.xlsx")
 
 if __name__ == "__main__":
-    
-    import_pdf_files_from_folder_to_database("./tenders_files/")
-    # file_filter()       
+    # При прямом запуске можно сразу запустить дедуп + полную обработку
+    from tender_validator import deduplicate_tenders_in_excel
+    from db import deduplicate_tenders_in_db
+
+    deduplicate_tenders_in_excel()
+    deduplicate_tenders_in_db()
+    file_filter()
