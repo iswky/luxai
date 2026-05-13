@@ -18,7 +18,7 @@ def extract_clean_tables(path):
 
 # 1. prepare the data
 FILE_PATH = "123.pdf"
-print("Парсим PDF...")
+print("Parsing PDF...")
 pdf_tables = extract_clean_tables(FILE_PATH)
 
 # we cut it to 7000 characters - this is the limit at which providers almost never issue “busy”
@@ -38,7 +38,7 @@ client = Client()
 def try_ask_ai():
     for provider in working_providers:
         try:
-            print(f"Пробую провайдера: {provider.__name__}...")
+            print(f"Trying provider: {provider.__name__}...")
             response = client.chat.completions.create(
                 model="", # or gpt-4
                 provider=provider,
@@ -50,17 +50,17 @@ def try_ask_ai():
             if content:
                 return content
         except Exception as e:
-            print(f"Провайдер {provider.__name__} выдал ошибку или Busy. Пробую следующего...")
+            print(f"Provider {provider.__name__} threw an error or is busy. Trying the next one...")
             time.sleep(1) # a short pause
     return None
 
 # 3. launch
-print("Начинаю общение с нейросетями...")
+print("Starting chat with the neural nets...")
 result = try_ask_ai()
 
 if result:
-    print("\n=== ПОЛУЧЕННЫЙ ОТВЕТ ===\n")
+    print("\n=== RECEIVED RESPONSE ===\n")
     print(result)
 else:
-    print("\n[!] Все провайдеры сейчас перегружены или не смогли обработать такой объем данных.")
-    print("Попробуй обрезать PDF или подождать 5 минут.")
+    print("\n[!] All providers are currently overloaded or couldn't handle this amount of data.")
+    print("Try trimming the PDF or wait a few mins.")

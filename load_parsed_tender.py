@@ -329,7 +329,7 @@ def main():
 
         conn.commit()
 
-    print(f"✅ Загружено в БД: тендер id={tender_id}, позиций={len(items)}")
+    print(f"Loaded into DB: tender id={tender_id}, positions={len(items)}")
 
 
 if __name__ == "__main__":

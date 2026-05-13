@@ -12,7 +12,7 @@ try:
 except ImportError:
     # if psycopg2 is not installed or we do not run it from the parser/ folder
     def delete_tender_from_db(tender_number: str) -> bool:
-        print(f"⚠️ db.py недоступен, тендер {tender_number} в БД не тронут")
+        print(f"db.py unavailable, tender {tender_number} untouched in DB")
         return False
 
 
@@ -32,9 +32,9 @@ def _wipe_tender_files(tender_number: str) -> None:
     if os.path.isdir(folder):
         try:
             shutil.rmtree(folder)
-            print(f"🗑 Удалена папка файлов: {folder}")
+            print(f"Deleted files folder: {folder}")
         except Exception as e:
-            print(f"⚠️ Не удалось удалить папку {folder}: {e}")
+            print(f"Failed to delete folder {folder}: {e}")
 
 
 def clear_tender(row: int):
@@ -61,7 +61,7 @@ def _clear_row_inplace(ws: Worksheet, row: int) -> None:
 # removes duplicate tenders in tenders.xlsx.if the same tender number has several lines, we leave the last one in order (it is the most recent, since the parser adds new lines to the end), and clear the earlier lines.we also delete the folders with the files of these duplicates and remove them from the database so that there are no “hanging” duplicates with the same tender_number.
 def deduplicate_tenders_in_excel() -> int:
     if not os.path.exists(TENDERS_XLSX):
-        print(f"⚠️ Файл {TENDERS_XLSX} не найден, пропускаю дедупликацию Excel")
+        print(f"File {TENDERS_XLSX} not found, skipping Excel deduplication")
         return 0
 
     wb: Workbook = load_workbook(TENDERS_XLSX)
@@ -85,7 +85,7 @@ def deduplicate_tenders_in_excel() -> int:
         keep_row = rows[-1]
         dup_rows = rows[:-1]
 
-        print(f"♻️ Дубль тендера {number}: строки {dup_rows} → оставляем {keep_row}")
+        print(f"Duplicate tender {number}: rows {dup_rows} → keeping {keep_row}")
 
         for r in dup_rows:
             _clear_row_inplace(ws, r)
@@ -97,9 +97,9 @@ def deduplicate_tenders_in_excel() -> int:
 
     if removed > 0:
         wb.save(TENDERS_XLSX)
-        print(f"✅ Дубликатов в Excel удалено: {removed}")
+        print(f"Excel duplicates removed: {removed}")
     else:
-        print("✅ Дублей в Excel не найдено")
+        print("Duplicates not found in Excel")
 
     return removed
 
@@ -133,6 +133,6 @@ def tender_validator():
             _clear_row_inplace(ws, row)
             _wipe_tender_files(full_number)
             delete_tender_from_db(full_number)
-            print(f"🗑 Тендер {full_number} просрочен ({date_string}), очищен")
+            print(f"Tender {full_number} expired ({date_string}), cleared")
 
     wb.save(TENDERS_XLSX)
