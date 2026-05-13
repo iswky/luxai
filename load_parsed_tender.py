@@ -53,15 +53,8 @@ def normalize_range_value(value):
     return str(value).strip()
 
 
+# we decompose key_requirements from json into the new database structure: - numerical_requirements: numeric and range params - string_and_bool_features: strings and boolean - components: lists of equipment/sensors/funcs - grouped_features: grouping by source blocks - unparsed_features: everything original without loss
 def split_requirements(key_requirements):
-    """
-    Раскладываем key_requirements из JSON по новой структуре БД:
-    - numerical_requirements: числовые и диапазонные параметры
-    - string_and_bool_features: строки и boolean
-    - components: списки комплектации/датчиков/функций
-    - grouped_features: группировка по исходным блокам
-    - unparsed_features: всё исходное без потерь
-    """
 
     numerical = {}
     string_bool = {}
@@ -336,7 +329,7 @@ def main():
 
         conn.commit()
 
-    print(f"✅ Загружено в БД: тендер id={tender_id}, позиций={len(items)}")
+    print(f"Loaded into DB: tender id={tender_id}, positions={len(items)}")
 
 
 if __name__ == "__main__":

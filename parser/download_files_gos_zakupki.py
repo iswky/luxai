@@ -21,61 +21,59 @@ headers = {
 green_fill = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
 
 
+# safe archive unpacking with all error handling
 def unarchive_file(file_path: str):
-    """
-    Безопасная распаковка архива с обработкой всех ошибок
-    """
 
     import shutil
     from unzipall import extract
     from unzipall.exceptions import ArchiveExtractionError
 
     
-    # Проверка существования файла
+    # checking file existence
     if not os.path.exists(file_path):
-        print(f"⚠️ Файл не найден: {file_path}")
+        print(f"File not found: {file_path}")
         return False
     
-    # Проверка, что это файл, а не папка
+    # checking that it is a file and not a folder
     if not os.path.isfile(file_path):
-        print(f"⚠️ Путь не является файлом: {file_path}")
+        print(f"Path is not a file: {file_path}")
         return False
     
     try:
-        # Пытаемся распаковать архив
-        print(f"📦 Распаковка: {file_path}")
+        # we are trying to unpack the archive
+        print(f"Unpacking: {file_path}")
         extract(file_path)
         
-        # Удаляем архив после успешной распаковки
+        # deleting the archive after successful unpacking
         if os.path.exists(file_path):
             os.remove(file_path)
-            print(f"✅ Архив удален: {file_path}")
+            print(f"Archive deleted: {file_path}")
         
     except ArchiveExtractionError as e:
-        print(f"❌ Ошибка распаковки {file_path}: {e}")
-        # Не удаляем архив, чтобы можно было попробовать позже
+        print(f"Unpack error {file_path}: {e}")
+        # don't delete the archive so you can try later
         return False
     except Exception as e:
-        print(f"❌ Неожиданная ошибка при распаковке {file_path}: {e}")
+        print(f"Unexpected error unpacking {file_path}: {e}")
         return False
     
-    # Формируем пути для перемещения файлов
+    # forming paths for moving files
     try:
-        # Получаем имя без расширения (более надежный способ)
+        # getting the name without extension (more reliable way)
         source_folder = os.path.splitext(file_path)[0]
         
-        # Если папка не существует, возможно архив не создал папку
+        # if the folder does not exist, the archive may not have created the folder
         if not os.path.exists(source_folder):
-            print(f"⚠️ Папка {source_folder} не найдена после распаковки")
+            print(f"Folder {source_folder} not found after unpacking")
             return False
         
-        # Родительская папка (на уровень выше)
+        # parent folder (one level up)
         destination_folder = os.path.dirname(source_folder)
         
-        print(f"📁 Исходная папка: {source_folder}")
-        print(f"📂 Папка назначения: {destination_folder}")
+        print(f"Source folder: {source_folder}")
+        print(f"Destination folder: {destination_folder}")
         
-        # Перемещаем все файлы и папки
+        # moving all files and folders
         moved_count = 0
         error_count = 0
         
@@ -84,44 +82,44 @@ def unarchive_file(file_path: str):
             destination_path = os.path.join(destination_folder, item)
             
             try:
-                # Если в папке назначения уже есть такой файл/папка
+                # if there is already such a file/folder in the destination folder
                 if os.path.exists(destination_path):
-                    # Генерируем уникальное имя
+                    # generating a unique name
                     base, ext = os.path.splitext(item)
                     counter = 1
                     while os.path.exists(destination_path):
                         new_name = f"{base}_{counter}{ext}"
                         destination_path = os.path.join(destination_folder, new_name)
                         counter += 1
-                    print(f"🔄 Переименован: {item} -> {os.path.basename(destination_path)}")
+                    print(f"Renamed: {item} -> {os.path.basename(destination_path)}")
                 
-                # Перемещаем
+                # moving
                 shutil.move(source_path, destination_path)
                 moved_count += 1
                 
             except Exception as e:
-                print(f"❌ Ошибка перемещения {item}: {e}")
+                print(f"Error moving {item}: {e}")
                 error_count += 1
                 continue
         
-        # Удаляем исходную папку
+        # deleting the original folder
         try:
             if os.path.exists(source_folder):
-                os.rmdir(source_folder)  # Пробуем удалить пустую папку
-                print(f"🗑️ Удалена папка: {source_folder}")
+                os.rmdir(source_folder)  # trying to delete an empty folder
+                print(f"Deleted folder: {source_folder}")
         except OSError:
-            # Папка не пуста, удаляем рекурсивно
+            # the folder is not empty, delete it recursively
             try:
                 shutil.rmtree(source_folder)
-                print(f"🗑️ Удалена папка с содержимым: {source_folder}")
+                print(f"Deleted folder with content: {source_folder}")
             except Exception as e:
-                print(f"⚠️ Не удалось удалить папку {source_folder}: {e}")
+                print(f"Could not delete folder {source_folder}: {e}")
         
-        print(f"✅ Перемещено файлов: {moved_count}, ошибок: {error_count}")
+        print(f"Moved files: {moved_count}, errors: {error_count}")
         return True
         
     except Exception as e:
-        print(f"❌ Ошибка при обработке распакованных файлов: {e}")
+        print(f"Error processing unpacked files: {e}")
         return False
 
 def download_file(url: str, filename: str = "file.html", tender_number: str = "unknown_tender/"):
@@ -129,7 +127,7 @@ def download_file(url: str, filename: str = "file.html", tender_number: str = "u
         'User-Agent': 'Mozilla/5.0'
     }
 
-    # Формируем путь: tenders_files/<tender_number>/
+    # form the path: tenders_files/<tender_number>/
     path = os.path.join("tenders_files", tender_number)
     os.makedirs(path, exist_ok=True)
     filepath = os.path.join(path, filename)
@@ -146,12 +144,12 @@ def download_file(url: str, filename: str = "file.html", tender_number: str = "u
             unarchive_file(filepath)
 
 
-        print('Файл', filename, 'успешно скачан')
+        print('File', filename, 'downloaded successfully')
 
         return filepath
         
     except requests.RequestException as e:
-        print(f"❌ Ошибка скачивания {filename}: {e}")
+        print(f"Error downloading {filename}: {e}")
         raise
 
 def extract_file_links_44FZ(html_content: str, base_url: str = 'https://zakupki.gov.ru') -> List[Dict[str, Optional[str]]]:
@@ -162,11 +160,11 @@ def extract_file_links_44FZ(html_content: str, base_url: str = 'https://zakupki.
     section: List = soup.find('div', class_= "blockFilesTabDocs")
 
     if not section:
-        print("❌ Секция blockFilesTabDocs не найдена")
+        print("Section blockFilesTabDocs not found")
         return []
     
     attachments: List = section.find_all('div', class_="attachment row")
-    print(f"📎 Найдено вложений: {len(attachments)}")
+    print(f"Found attachments: {len(attachments)}")
 
     for i, attachment in enumerate(attachments, 1):
         link: Optional[Tag] = attachment.find('a', href=lambda h: h and 'https://zakupki.gov.ru' in h)
@@ -201,31 +199,31 @@ def extract_file_links_223FZ(url: str, base_url: str = 'https://zakupki.gov.ru')
             
             page.goto(url)
 
-            # ✅ Ждём внутри блока
+            # ✅ we are waiting inside the block
             try:
                 page.wait_for_selector("a[href*='download.html']", timeout=15000)
                 html = page.content()
                 browser.close()
-                # Продолжаем обработку HTML
+                # continue processing html
             except Exception:
-                print(f"⚠️ Таймаут: элемент 'a[href*='download.html']' не найден на {url}")
+                print(f"Timeout: element 'a[href*='download.html']' not found on {url}")
                 browser.close()
                 return []
 
-        # ✅ Используем html, который получили
+        # ✅ we use the html that we received
         soup: BeautifulSoup = BeautifulSoup(html, 'html.parser')
         files: List[Dict[str, Optional[str]]] = []
 
         section: Tag = soup.find('section', class_="card-attachments")
 
         if not section:
-            print("❌ Секция \"card-attachments\" не найдена")
+            print("Section \"card-attachments\" not found")
             return []
 
         counts = section.find_all('span', class_=lambda x: x and 'count' in x.split())
 
         if not counts:
-            print("❌ Секции \"count \" не найдена")
+            print("Sections \"count \" not found")
             return []
 
         for count in counts:
@@ -258,7 +256,7 @@ def extract_file_links_223FZ(url: str, base_url: str = 'https://zakupki.gov.ru')
         return files
     
     except Exception as e:
-        print(f"Ошибка при загрузке {url}: {e}")
+        print(f"Error loading {url}: {e}")
         return []
 
 def get_link_to_file_page(tender_link: str, FZ: str) -> str:
@@ -275,7 +273,7 @@ def get_link_to_file_page(tender_link: str, FZ: str) -> str:
         return ""
 
     if not section:
-        print("❌ Секция tabsNav d-flex не найдена")
+        print("Section tabsNav d-flex not found")
         return ""
 
     link: Optional[Tag] = section.find('a', href=lambda h: h and 'documents.html' in h)
@@ -306,14 +304,14 @@ def download_tenders_files():
 
         url: str = "https://zakupki.gov.ru" + get_link_to_file_page(tender_link, FZ)
 
-        print
+        print()
 
         print(url)
-        print(f"Сайт откуда скачиваем: {url}")
-        print(f"скачиваем файлы для тендера: {tender_id}")
+        print(f"Downloading from site: {url}")
+        print(f"Downloading files for tender: {tender_id}")
 
         if FZ == "44-ФЗ":
-            # Получаем HTML
+            # getting html
             response = requests.get(url, headers = headers)
             html_text: str = response.text
             files: List[Dict[str, Optional[str]]] = []

@@ -37,9 +37,9 @@ def files_page(request):
 
 
 def update_prompt(request, file_id):
-    # Пока в БД нет таблицы/поля для промптов файлов.
-    # Когда появится tender_documents или ai_parse_runs,
-    # здесь надо будет делать UPDATE.
+    # there is currently no table/field for file prompts in the database.
+    # when tender_documents or ai_parse_runs appears,
+    # here you will need to do an update.
     return redirect('files_page')
 
 
