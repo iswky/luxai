@@ -112,7 +112,7 @@ def convert_files_to_pdf(folder_path: str, files: List[str]):
         raise NotADirectoryError(f"'{folder_path}' не является директорией")
 
     for filename in files:
-        file_path = folder_path + '/' + filename
+        file_path = os.path.join(folder_path, filename)
 
         convert1file2pdf(file_path)
 
@@ -545,10 +545,24 @@ def import_pdf_files_from_folder_to_database(folder_path: str):
         file_extension = os.path.splitext(file)[1]
 
         if file_extension == '.pdf':
-            for_dimasik = parse_pdf_to_json(folder_path + file)
+            for_dimasik = parse_pdf_to_json(os.path.join(folder_path, file))
             # Дима, здесь возвращается json pdf-файла, ты его должен записать в бд
 
+def rename_all_files_in_folder(folder_path: str, tender_id: str):
+    if not os.path.exists(folder_path):
+        print(f"Папки {folder_path} не найдено")
+        return
 
+    files_in_folder = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+
+    i = 1
+    for file in files_in_folder:
+        file_ext = os.path.splitext(file)[1]
+        old_path = os.path.join(folder_path, file)
+        new_path = os.path.join(folder_path, f"{tender_id}_{i}{file_ext}")
+
+        os.rename(old_path, new_path)
+        i += 1
 
 def file_filter():
     tenders_info: List[Tuple[Any, Any, int]] = read_tenders_info("tenders.xlsx")
@@ -580,6 +594,8 @@ def file_filter():
 
         delete_files(folder_path, files_in_folder)
 
+        rename_all_files_in_folder(folder_path, number)
+
         import_pdf_files_from_folder_to_database(folder_path)
 
         ws.cell(row=row_num, column=11, value='True')
@@ -588,6 +604,7 @@ def file_filter():
         wb.save("tenders.xlsx")
 
 if __name__ == "__main__":
+    rename_all_files_in_folder("./tenders_files", "1234")
     
-    import_pdf_files_from_folder_to_database("./tenders_files/")
+    # import_pdf_files_from_folder_to_database("./tenders_files/")
     # file_filter()       
