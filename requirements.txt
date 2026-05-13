@@ -9,3 +9,9 @@ pdfplumber
 pandas
 openai
 tabulate
+pypdf
+python-docx
+docx2pdf
+matplotlib
+unzipall
+playwright

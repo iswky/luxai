@@ -1,12 +1,40 @@
 services:
 
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: backend
     volumes:
       - ./backend:/app
+    environment:
+      - DB_HOST=db
+      - DB_NAME=appdb
+      - DB_USER=user
+      - DB_PASS=pass
+      - DB_PORT=5432
     ports:
       - "8000:8000"
+    depends_on:
+      - db
+      - llm
+
+  parser:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: parser
+    volumes:
+      - ./parser:/app/parser
+      - ./backend:/app/backend
+    environment:
+      - DB_HOST=db
+      - DB_NAME=appdb
+      - DB_USER=user
+      - DB_PASS=pass
+      - DB_PORT=5432
+      - PYTHONPATH=/app/parser:/app/backend
+    command: tail -f /dev/null
     depends_on:
       - db
       - llm
@@ -20,6 +48,8 @@ services:
       POSTGRES_PASSWORD: pass
     ports:
       - "5432:5432"
+    volumes:
+      - ./db/init_schema.sql:/docker-entrypoint-initdb.d/init_schema.sql
 
   llm:
     image: ollama/ollama
