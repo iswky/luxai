@@ -1,32 +1,4 @@
-"""
-db.py
---------------------
-Работа с PostgreSQL: запись распарсенных тендеров и удаление дублей.
-
-Параметры подключения соответствуют docker-compose.yml:
-    db:
-      image: postgres:15
-      environment:
-        POSTGRES_DB: appdb
-        POSTGRES_USER: user
-        POSTGRES_PASSWORD: pass
-      ports:
-        - "5432:5432"
-
-Схема r_luxai (актуальная):
-  tenders(id, tender_number UNIQUE, customer_name, status, prompt, ...)
-  tender_positions(tender_id, product_type, product_name, country,
-                   min_release_year, screen_size, min_ports_qty, min_cpu,
-                   min_cpu_cores, min_gpu, min_ram_gb, ram_type,
-                   min_storage_gb, storage_type, os, min_print_speed_ppm,
-                   min_warranty_months, additional_info,
-                   components jsonb,
-                   numerical_requirements json,
-                   string_and_bool_features json,
-                   grouped_features json,
-                   unparsed_features json,
-                   quantity, max_price)
-"""
+# db.py -------------------- working with postgresql: recording parsed tenders and removing duplicates.the connection params correspond to docker-compose.yml: db: image: postgres:15 environment: postgres_db: appdb postgres_user: user postgres_password: pass ports: - "5432:5432" r_luxai scheme (current): tenders(id, tender_number unique, customer_name, status, prompt, ...) tender_positions(tender_id,product_type, product_name, country, min_release_year, screen_size, min_ports_qty, min_cpu, min_cpu_cores, min_gpu, min_ram_gb, ram_type, min_storage_gb, storage_type, os, min_print_speed_ppm, min_warranty_months, additional_info, components jsonb, numerical_requirements json,string_and_bool_features json, grouped_features json, unparsed_features json, quantity, max_price)
 
 from typing import Any, Dict, List, Optional, Tuple
 import logging
@@ -46,7 +18,7 @@ DB_CONFIG: Dict[str, str] = {
     "password": "pass",
 }
 
-# Лимиты длины varchar-колонок (из дампа). Если LLM вернёт длиннее — обрежем.
+# length limits for varchar columns (from dump).if llm spits out longer, we’ll cut it.
 PRODUCT_TYPE_MAXLEN = 50
 PRODUCT_NAME_MAXLEN = 50
 COUNTRY_MAXLEN = 50
@@ -57,11 +29,11 @@ STORAGE_TYPE_MAXLEN = 10
 OS_MAXLEN = 50
 
 
-# ─────────────────────── маппинг ключей JSON → типизированные колонки ───────────────────────
-# В numerical_requirements / string_and_bool_features ключи свободные, на русском.
-# Эти regex выцепляют то, что укладывается в отдельные колонки tender_positions
-# для последующего быстрого SQL-сравнения с products.
-# Все остальные ключи никуда не теряются — они ложатся в одноимённые json-колонки целиком.
+# ─────────────────────── json key mapping → typed columns───────────────────────
+# in numerical_requirements / string_and_bool_features the keys are free, in russian.
+# these regex extract what fits into separate tender_positions columns
+# for subsequent quick sql comparison with products.
+# all other keys are not lost anywhere - they go entirely into the json columns of the same name.
 
 NUMERIC_KEY_PATTERNS: List[Tuple[str, re.Pattern]] = [
     ("min_release_year",    re.compile(r"^(год_выпуска|release_year)", re.IGNORECASE)),
@@ -84,8 +56,8 @@ STRING_KEY_PATTERNS: List[Tuple[str, re.Pattern]] = [
 ]
 
 
+# from { gte: x } / { lte: x } / { eq: x } / number → we get the number (priority: gte > eq > lte).
 def _extract_number_value(value: Any) -> Optional[float]:
-    """Из { gte: X } / { lte: X } / { eq: X } / числа → достаём число (приоритет: gte > eq > lte)."""
     if value is None:
         return None
     if isinstance(value, (int, float)):
@@ -97,13 +69,8 @@ def _extract_number_value(value: Any) -> Optional[float]:
     return None
 
 
+# it runs through numerical_requirements / string_and_bool_features and tries to fit the values ​​into the typed tender_positions columns.spits out dict {colname: value}.
 def _find_typed_columns(item: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Пробегает по numerical_requirements / string_and_bool_features и пытается уложить
-    значения в типизированные колонки tender_positions.
-
-    Возвращает dict {colname: value}.
-    """
     columns: Dict[str, Any] = {}
 
     for key, val in (item.get("numerical_requirements") or {}).items():
@@ -133,16 +100,17 @@ def _to_int(value: Any, default: int = 1) -> int:
         return default
 
 
+# trims the string to maxlen characters (varchar will not accept longer).
 def _truncate(value: Optional[str], maxlen: int) -> Optional[str]:
-    """Обрезает строку до maxlen символов (varchar не примет длиннее)."""
     if value is None:
         return None
     s = str(value)
     return s[:maxlen] if len(s) > maxlen else s
 
 
-# ─────────────────────── публичные функции ───────────────────────
+# ─────────────────────── public funcs───────────────────────
 
+# stashes the parsed tender in the database.behavior in case of a double (tender_number already exists): - tender update (updatedate = now()) - its old tender_positions are deleted - new positions from parsed_json are inserted all in one transaction.
 def save_tender_to_db(
     tender_number: str,
     parsed_json: Dict[str, Any],
@@ -150,31 +118,12 @@ def save_tender_to_db(
     customer_name: Optional[str] = None,
     prompt: Optional[str] = None,
 ) -> Optional[int]:
-    """
-    Сохраняет распарсенный тендер в БД.
-
-    Поведение при дубле (tender_number уже есть):
-      - тендер UPDATE'ится (updatedate = now())
-      - его старые tender_positions удаляются
-      - вставляются новые позиции из parsed_json
-    Всё в одной транзакции.
-
-    Args:
-        tender_number: номер тендера (из колонки 1 Excel)
-        parsed_json: то, что возвращает parse_pdf_to_json(...). Ожидается ключ "items".
-        pdf_source_file: имя исходного pdf-файла (пойдёт в additional_info)
-        customer_name: имя заказчика
-        prompt: текст промпта, который слали в LLM (опционально)
-
-    Returns:
-        id тендера в БД либо None при ошибке.
-    """
     items: List[Dict[str, Any]] = parsed_json.get("items", []) or []
 
     try:
         with psycopg2.connect(**DB_CONFIG) as conn:
             with conn.cursor() as cur:
-                # 1. UPSERT тендера
+                # 1. upsert tender
                 cur.execute(
                     """
                     INSERT INTO r_luxai.tenders (
@@ -192,13 +141,13 @@ def save_tender_to_db(
                 )
                 tender_id = cur.fetchone()[0]
 
-                # 2. Сносим старые позиции (на случай повторного запуска)
+                # 2. we demolish old positions (in case of re-launch)
                 cur.execute(
                     "DELETE FROM r_luxai.tender_positions WHERE tender_id = %s;",
                     [tender_id],
                 )
 
-                # 3. Льём новые позиции
+                # 3. we create new positions
                 inserted = 0
                 for item in items:
                     cols = _find_typed_columns(item)
@@ -288,11 +237,8 @@ def save_tender_to_db(
         return None
 
 
+# removes a tender and all its positions from the database by tender_number.spits out true if something was actually deleted.
 def delete_tender_from_db(tender_number: str) -> bool:
-    """
-    Удаляет тендер и все его позиции из БД по tender_number.
-    Возвращает True, если что-то реально удалилось.
-    """
     try:
         with psycopg2.connect(**DB_CONFIG) as conn:
             with conn.cursor() as cur:
@@ -320,16 +266,8 @@ def delete_tender_from_db(tender_number: str) -> bool:
         return False
 
 
+# cleans up duplicates in r_luxai.tenders.there is a unique key (tender_number) on the table, so there should be no strict duplicates.but if for some reason the insertion went earlier without upsert and they appeared, we leave the most recent entry (by createdate / id), we demolish the rest along with their positions.
 def deduplicate_tenders_in_db() -> int:
-    """
-    Чистит дубли в r_luxai.tenders. Уникальный ключ (tender_number) на таблице есть,
-    поэтому строгих дублей быть не должно. Но если по какой-то причине вставка
-    шла раньше без UPSERT'а и они появились — оставляем самую свежую запись
-    (по createdate / id), остальные сносим вместе с их позициями.
-
-    Returns:
-        количество удалённых строк-дублей.
-    """
     try:
         with psycopg2.connect(**DB_CONFIG) as conn:
             with conn.cursor() as cur:
