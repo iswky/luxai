@@ -113,7 +113,7 @@ def convert_files_to_pdf(folder_path: str, files: List[str]):
         raise NotADirectoryError(f"'{folder_path}' не является директорией")
 
     for filename in files:
-        file_path = folder_path + '/' + filename
+        file_path = os.path.join(folder_path, filename)
 
         convert1file2pdf(file_path)
 
@@ -599,7 +599,21 @@ def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: st
     else:
         print(f"❌ Сохранение тендера {tender_number} в БД не удалось")
 
+def rename_all_files_in_folder(folder_path: str, tender_id: str):
+    if not os.path.exists(folder_path):
+        print(f"Папки {folder_path} не найдено")
+        return
 
+    files_in_folder = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+
+    i = 1
+    for file in files_in_folder:
+        file_ext = os.path.splitext(file)[1]
+        old_path = os.path.join(folder_path, file)
+        new_path = os.path.join(folder_path, f"{tender_id}_{i}{file_ext}")
+
+        os.rename(old_path, new_path)
+        i += 1
 
 def file_filter():
     tenders_info: List[Tuple[Any, Any, int]] = read_tenders_info("tenders.xlsx")
@@ -629,6 +643,7 @@ def file_filter():
 
         delete_files(folder_path, files_in_folder)
 
+        rename_all_files_in_folder(folder_path, number)
         # tender_number в Excel хранится с 2-символьным префиксом (см. read_tenders_info: value[2:]),
         # а folder_path / number — уже без префикса. В БД сохраняем полный номер из Excel,
         # для этого восстановим его из ws.
