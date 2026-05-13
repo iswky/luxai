@@ -4,7 +4,6 @@ requests
 beautifulsoup4
 openpyxl
 lxml
-ollama
 pdfplumber
 pandas
 openai

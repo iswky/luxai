@@ -17,7 +17,6 @@ services:
       - "8000:8000"
     depends_on:
       - db
-      - llm
 
   parser:
     build:
@@ -34,10 +33,10 @@ services:
       - DB_PASS=pass
       - DB_PORT=5432
       - PYTHONPATH=/app/parser:/app/backend
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
     command: tail -f /dev/null
     depends_on:
       - db
-      - llm
 
   db:
     image: postgres:15
@@ -50,17 +49,3 @@ services:
       - "5432:5432"
     volumes:
       - ./db/init_schema.sql:/docker-entrypoint-initdb.d/init_schema.sql
-
-  llm:
-    image: ollama/ollama
-    container_name: llm
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama:/root/.ollama
-      - ./llm-service/models:/models
-      - ./init:/init
-    entrypoint: ["/bin/bash", "/init/init.sh"]
-
-volumes:
-  ollama:
