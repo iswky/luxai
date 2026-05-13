@@ -34,7 +34,8 @@ services:
       - DB_PORT=5432
       - PYTHONPATH=/app/parser:/app/backend
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
-    command: tail -f /dev/null
+      - PARSER_INTERVAL_SECONDS=3600
+    command: python parser/scheduler.py
     depends_on:
       - db
 
