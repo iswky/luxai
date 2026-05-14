@@ -3,11 +3,9 @@ from bs4 import Tag
 from urllib.parse import urljoin
 from typing import List, Dict, Optional, Tuple, Any
 import requests
-from openpyxl import load_workbook
-from openpyxl.worksheet.worksheet import Worksheet
-from openpyxl.workbook.workbook import Workbook
-from openpyxl.styles import PatternFill
 import os
+
+from db import get_all_from_processing_queue, update_processing_queue_field
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -17,8 +15,6 @@ headers = {
     'Referer': 'https://zakupki.gov.ru/',
     'Connection': 'keep-alive',
 }
-
-green_fill = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
 
 
 # safe archive unpacking with all error handling
@@ -289,20 +285,23 @@ def get_link_to_file_page(tender_link: str, FZ: str) -> str:
     return ""
 
 def download_tenders_files():
-    wb: Workbook = load_workbook("tenders.xlsx")
-    ws: Worksheet = wb.active
+    tenders = get_all_from_processing_queue()
 
-    i = 2
-    for row in range(2, ws.max_row + 1):
-        tender_id: Any = ws.cell(row=row, column=1).value[2:]
-        tender_link: str = ws.cell(row=row, column=3).value
-        FZ: str = ws.cell(row=row, column=5).value
-        Files_download_flag: Any = ws.cell(row=row, column=10).value
+    for tender in tenders:
+        full_tender_num = tender['tender_number']
+        tender_id = full_tender_num[2:] if len(full_tender_num) > 2 else full_tender_num
+        tender_link = tender['url']
+        FZ = tender['law']
+        files_downloaded = tender['files_downloaded']
 
-        if Files_download_flag == "True":
+        if files_downloaded:
             continue
 
-        url: str = "https://zakupki.gov.ru" + get_link_to_file_page(tender_link, FZ)
+        file_page_link = get_link_to_file_page(tender_link, FZ)
+        if not file_page_link:
+            continue
+
+        url: str = "https://zakupki.gov.ru" + file_page_link
 
         print()
 
@@ -310,12 +309,16 @@ def download_tenders_files():
         print(f"Downloading from site: {url}")
         print(f"Downloading files for tender: {tender_id}")
 
+        files: List[Dict[str, Optional[str]]] = []
         if FZ == "44-ФЗ":
             # getting html
-            response = requests.get(url, headers = headers)
-            html_text: str = response.text
-            files: List[Dict[str, Optional[str]]] = []
-            files = extract_file_links_44FZ(html_text)
+            try:
+                response = requests.get(url, headers = headers, timeout=15)
+                html_text: str = response.text
+                files = extract_file_links_44FZ(html_text)
+            except Exception as e:
+                print(f"Error fetching 44-FZ links: {e}")
+                continue
         elif FZ == "223-ФЗ":
             files = extract_file_links_223FZ(url)
         else:
@@ -327,14 +330,12 @@ def download_tenders_files():
         try:
             for file_info in files:
                 download_file(file_info['url'], file_info['title'], tender_id)
-            ws.cell(row=row, column=10).value = 'True'
-            ws.cell(row=row, column=10).fill = green_fill
-            wb.save("tenders.xlsx")
+
+            update_processing_queue_field(full_tender_num, 'files_downloaded', True)
+            print(f"Marked {full_tender_num} as downloaded")
             
         except requests.RequestException as e:
-            print()
-        
-        i += 1
+            print(f"Error downloading files for {tender_id}: {e}")
 
 
 if __name__ == "__main__":

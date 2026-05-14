@@ -1,12 +1,11 @@
-from openpyxl.worksheet.worksheet import Worksheet
-from openpyxl.workbook.workbook import Workbook
-from openpyxl import load_workbook
 from typing import List, Dict, Any
 from bs4 import BeautifulSoup
 import requests
 import logging
 import time
 import re
+
+from db import get_all_from_processing_queue, update_processing_queue_field
 
 logging.basicConfig(level = logging.DEBUG, filename = "parse_logs.log", filemode = "w")
 
@@ -18,52 +17,6 @@ headers = {
     'Referer': 'https://zakupki.gov.ru/',
     'Connection': 'keep-alive',
 }
-
-def read_tenders_info(filename: str) -> List[Dict[str, Any]]:
-    try:
-        wb: Workbook = load_workbook(filename)
-        ws: Worksheet = wb.active
-        logging.debug(f"{filename} was opened to read information about tenders")
-
-        pairs: List[Dict[str, Any]] = []
-        for row in range(2, ws.max_row + 1):
-
-            val_1: str = ws.cell(row=row, column=1).value[2:]
-            val_9: str = ws.cell(row=row, column=9).value
-
-            if val_9:
-                continue
-
-            tender_info = {
-                'Number': val_1,
-                'City': val_9,
-                'row_num': row
-            }
-            pairs.append(tender_info)
-
-        return pairs
-    
-    except FileNotFoundError as e:
-        logging.error(f"Error in city_parse.py:read_tenders_info: File {filename} not found: {e}")
-        raise FileNotFoundError("File {filename} not found: {e}")
-        return []
-        
-    except PermissionError as e:
-        print(f"Error in city_parse.py:read_tenders_info: No access to file {filename}: {e}")
-        return []
-        
-    except KeyError as e:
-        print(f"Error in city_parse.py:read_tenders_info: Error in data structures: {e}")
-        return []
-        
-    except Exception as e:
-        # we catch all other unexpected errors
-        print(f"Error in city_parse.py:read_tenders_info: Error in city_parse.py:read_tenders_info: {e}")
-        print(f"Error type: {type(e).__name__}")
-        return []
-        
-
-
 
 # pulls city/town name from address
 def extract_city_from_address(address: str) -> str:
@@ -127,27 +80,31 @@ def extract_city(html_content: str) -> str:
 
 def city_parse():
     try:
-        tenders_info: List[Dict[str, Any]] = read_tenders_info("tenders.xlsx")
+        tenders = get_all_from_processing_queue()
 
-        wb: Workbook = load_workbook("tenders.xlsx")
-        ws: Worksheet = wb.active
+        for tender in tenders:
+            full_tender_num = tender['tender_number']
+            # originally the xlsx parsing took substring [2:] of the tender_number
+            # tender_number in db is stored with a 2-character prefix (see original code reading from cell value)
+            tender_num = full_tender_num[2:] if len(full_tender_num) > 2 else full_tender_num
+            city: str = tender['city']
 
-        for tender in tenders_info:
-            tender_num: str = tender['Number']
-            city: str = tender['City']
-            row_num: int = tender['row_num']
+            # skip if city is already parsed
+            if city and city != 'Не указан':
+                continue
+
             url = 'https://zakupki.gov.ru/epz/order/notice/ea20/view/common-info.html?regNumber=' + tender_num
 
-            response = requests.get(url, headers = headers)
+            try:
+                response = requests.get(url, headers = headers, timeout=15)
+                html_text: str = response.text
+                new_city = extract_city(html_text)
 
-            # getting html as a string
-            html_text: str = response.text
+                update_processing_queue_field(full_tender_num, 'city', new_city)
+                print(f"Updated city for {full_tender_num}: {new_city}")
 
-            city = extract_city(html_text)
-
-            ws.cell(row = row_num, column = 9).value = city
-            wb.save("tenders.xlsx")
-
-            time.sleep(1)
-    except:
-        print()
+                time.sleep(1)
+            except Exception as req_err:
+                print(f"Error fetching city for {full_tender_num}: {req_err}")
+    except Exception as e:
+        print(f"Error in city_parse: {e}")

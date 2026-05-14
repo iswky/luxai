@@ -1,8 +1,8 @@
 from typing import List, Tuple, Any
-from openpyxl import load_workbook
-from openpyxl.worksheet.worksheet import Worksheet
-from openpyxl.workbook.workbook import Workbook
-from openpyxl.styles import PatternFill
+
+
+
+
 from llm import parse_pdf_to_json
 from db import save_tender_to_db
 import os
@@ -61,7 +61,6 @@ def get_default_keywords() -> List[str]:
         "каталог товаров работ услуг"
     ]
 
-green_fill = PatternFill(start_color="00FF00", end_color="00FF00", fill_type="solid")
 keywords: List[str] = load_keywords_from_file()
 
 # regular expression for quick search (case insensitive)
@@ -361,7 +360,7 @@ def check_keywords_in_file(file_path: str, keywords_pattern: re.Pattern = KEYWOR
         # excel
         elif ext in ['.xlsx', '.xls']:
             try:
-                from openpyxl import load_workbook
+
                 
                 # loading the workbook (.xlsx only, .xls is not supported by openpyxl)
                 wb = load_workbook(file_path, read_only=True, data_only=True)
@@ -454,21 +453,10 @@ def find_files_with_keywords(
     
     return matched_files
 
-def read_tenders_info(filename: str) -> List[Tuple[Any, Any, int]]:
-    wb: Workbook = load_workbook(filename)
-    ws: Worksheet = wb.active
+from db import get_all_from_processing_queue, update_processing_queue_field
 
-    pairs: List[Tuple[Any, Any, int]] = []
-    for row in range(2, ws.max_row + 1):
-        if (ws.cell(row=row, column=10).value == 'True'):
-            val_1: Any = ws.cell(row=row, column=1).value[2:]
-            val_11: Any = ws.cell(row=row, column=11).value
-            pairs.append((val_1, val_11, row))
-
-    return pairs
-        
 # chews through all pdf files from the tender folder and stashes them in the database.if there are several pdfs in the folder, all their positions will be included in one tender (via upsert in save_tender_to_db).when restarted, old tender positions are deleted and written over again (see db.save_tender_to_db).
-def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: str = None):
+def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: str = None, customer_name: str = None):
     if not os.path.exists(folder_path):
         print(f"Folder {folder_path} not found")
         return
@@ -515,6 +503,7 @@ def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: st
         tender_number=tender_number,
         parsed_json=merged,
         pdf_source_file=pdf_source,
+        customer_name=customer_name
     )
 
     if db_id is not None:
@@ -539,14 +528,15 @@ def rename_all_files_in_folder(folder_path: str, tender_id: str):
         i += 1
 
 def file_filter():
-    tenders_info: List[Tuple[Any, Any, int]] = read_tenders_info("tenders.xlsx")
+    tenders = get_all_from_processing_queue()
 
-    wb: Workbook = load_workbook("tenders.xlsx")
-    ws: Worksheet = wb.active
-
-    for number, flag, row_num in tenders_info:
-        if (flag != "False"):
+    for tender in tenders:
+        if not tender['files_downloaded'] or tender['files_filtered']:
             continue
+
+        full_tender_num = tender['tender_number']
+        number = full_tender_num[2:] if len(full_tender_num) > 2 else full_tender_num
+        customer_name = tender['customer']
 
         print(f"Examining files for tender {number}")
 
@@ -567,22 +557,16 @@ def file_filter():
         delete_files(folder_path, files_in_folder)
 
         rename_all_files_in_folder(folder_path, number)
-        # tender_number in excel is stored with a 2-character prefix (see read_tenders_info: value[2:]),
-        # and folder_path / number - without a prefix.we save the full number from excel in the database,
-        # to do this, we will restore it from ws.
-        full_tender_number = ws.cell(row=row_num, column=1).value
-        import_pdf_files_from_folder_to_database(folder_path, tender_number=str(full_tender_number))
 
-        ws.cell(row=row_num, column=11, value='True')
-        ws.cell(row=row_num, column=11).fill = green_fill
+        # pass the full tender number and customer name to the database saving function
+        import_pdf_files_from_folder_to_database(folder_path, tender_number=str(full_tender_num), customer_name=customer_name)
 
-        wb.save("tenders.xlsx")
+        update_processing_queue_field(full_tender_num, 'files_filtered', True)
+        print(f"Marked {full_tender_num} as filtered and completed")
+
 
 if __name__ == "__main__":
-    # when launching directly, you can immediately launch dedup + full processing
-    from tender_validator import deduplicate_tenders_in_excel
     from db import deduplicate_tenders_in_db
 
-    deduplicate_tenders_in_excel()
     deduplicate_tenders_in_db()
     file_filter()
