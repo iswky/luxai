@@ -110,12 +110,15 @@ def convert1file2pdf(file_path: str):
     output_filename = os.path.splitext(file_path)[0] + ".pdf"
     
     try:               
-        if file_extension in ['.pdf', '.xlsx', '.xls']:
+        if file_extension in ['.pdf']:
+            return
+        elif file_extension in ['.xlsx', '.xls']:
             convert_excel_to_pdf(file_path, output_filename)
-        if file_extension in ['.docx', '.doc']:
+        elif file_extension in ['.docx', '.doc']:
             convert_word_to_pdf(file_path, output_filename)
         else:
             print(f"Unsupported format: {file_path}")
+            return
         
         print(f"Converted: {file_path} -> {output_filename}")
         
