@@ -109,3 +109,20 @@ CREATE TABLE IF NOT EXISTS r_luxai.documents (
     createdate TIMESTAMP DEFAULT NOW(),
     updatedate TIMESTAMP DEFAULT NOW()
 );
+
+CREATE TABLE IF NOT EXISTS r_luxai.processing_queue (
+    id SERIAL PRIMARY KEY,
+    tender_number VARCHAR(100) UNIQUE NOT NULL,
+    name VARCHAR(1000),
+    url TEXT,
+    price VARCHAR(255),
+    law VARCHAR(100),
+    end_date VARCHAR(100),
+    customer VARCHAR(500),
+    first_seen VARCHAR(100),
+    city VARCHAR(255),
+    files_downloaded BOOLEAN DEFAULT FALSE,
+    files_filtered BOOLEAN DEFAULT FALSE,
+    createdate TIMESTAMP DEFAULT NOW(),
+    updatedate TIMESTAMP DEFAULT NOW()
+);

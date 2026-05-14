@@ -13,7 +13,6 @@ def main():
     Parse_gos_zakupki(interactive=interactive)
     city_parse()
     download_tenders_files()
-    deduplicate_tenders_in_excel()
     deduplicate_tenders_in_db()
     file_filter()
  
