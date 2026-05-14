@@ -3,6 +3,7 @@
 from typing import Any, Dict, List, Optional, Tuple
 import logging
 import re
+import os
 
 import psycopg2
 from psycopg2.extras import Json
@@ -11,11 +12,11 @@ from psycopg2.extras import Json
 logger = logging.getLogger(__name__)
 
 DB_CONFIG: Dict[str, str] = {
-    "host": "localhost",
-    "port": "5432",
-    "dbname": "appdb",
-    "user": "user",
-    "password": "pass",
+    "host": os.getenv("DB_HOST", "localhost"),
+    "port": os.getenv("DB_PORT", "5432"),
+    "dbname": os.getenv("DB_NAME", "appdb"),
+    "user": os.getenv("DB_USER", "user"),
+    "password": os.getenv("DB_PASS", "pass"),
 }
 
 # length limits for varchar columns (from dump).if llm spits out longer, we’ll cut it.

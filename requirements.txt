@@ -4,8 +4,14 @@ requests
 beautifulsoup4
 openpyxl
 lxml
-ollama
 pdfplumber
 pandas
 openai
 tabulate
+pypdf
+python-docx
+docx2pdf
+matplotlib
+unzipall
+playwright
+python-dotenv
