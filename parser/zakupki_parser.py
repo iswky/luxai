@@ -223,7 +223,7 @@ class TenderParser:
             return False
     
     # chews through all pages and stashes along the way
-    def parse_all_pages(self, max_pages=None):
+    def parse_all_pages(self, max_pages=None, page_callback=None):
         print("="*60)
         print("PARSING TENDERS (saving as we go)")
         print("="*60)
@@ -250,6 +250,10 @@ class TenderParser:
             
             print(f"On page: new {new_on_page}, total added {total_new}")
             
+            if page_callback:
+                print("Running callback for processed page")
+                page_callback()
+
             if not self.has_next_page(soup):
                 print("Last page")
                 break
@@ -262,12 +266,12 @@ class TenderParser:
         
         return total_new
 
-def Parse_gos_zakupki(interactive=True):
+def Parse_gos_zakupki(interactive=True, page_callback=None):
     parser = TenderParser()
 
     if not interactive:
         try:
-            parser.parse_all_pages()
+            parser.parse_all_pages(page_callback=page_callback)
         except Exception as e:
             print(f"Error: {e}")
             traceback.print_exc()
@@ -286,7 +290,7 @@ def Parse_gos_zakupki(interactive=True):
         
         if choice == '1':
             try:
-                parser.parse_all_pages()
+                parser.parse_all_pages(page_callback=page_callback)
             except KeyboardInterrupt:
                 print("\n\n Interrupted by user")
                 print("Data already saved, can restart - duplicates will not be added")
@@ -298,7 +302,7 @@ def Parse_gos_zakupki(interactive=True):
             try:
                 pages = input("How many pages to parse? ").strip()
                 max_pages = int(pages) if pages else 10
-                parser.parse_all_pages(max_pages=max_pages)
+                parser.parse_all_pages(max_pages=max_pages, page_callback=page_callback)
             except KeyboardInterrupt:
                 print("\n\n Interrupted by user")
             except Exception as e:

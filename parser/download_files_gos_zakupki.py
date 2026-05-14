@@ -5,7 +5,7 @@ from typing import List, Dict, Optional, Tuple, Any
 import requests
 import os
 
-from db import get_all_from_processing_queue, update_processing_queue_field
+from db import get_all_from_processing_queue, update_processing_queue_field, is_tender_in_db
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -294,6 +294,10 @@ def download_tenders_files():
         FZ = tender['law']
         files_downloaded = tender['files_downloaded']
 
+        if is_tender_in_db(full_tender_num):
+            print(f"Tender {full_tender_num} already processed in DB, skipping downloading.")
+            continue
+
         if files_downloaded:
             continue
 
@@ -333,7 +337,7 @@ def download_tenders_files():
 
             update_processing_queue_field(full_tender_num, 'files_downloaded', True)
             print(f"Marked {full_tender_num} as downloaded")
-            
+
         except requests.RequestException as e:
             print(f"Error downloading files for {tender_id}: {e}")
 

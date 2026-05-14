@@ -110,12 +110,15 @@ def convert1file2pdf(file_path: str):
     output_filename = os.path.splitext(file_path)[0] + ".pdf"
     
     try:               
-        if file_extension in ['.pdf', '.xlsx', '.xls']:
+        if file_extension in ['.pdf']:
+            return
+        elif file_extension in ['.xlsx', '.xls']:
             convert_excel_to_pdf(file_path, output_filename)
-        if file_extension in ['.docx', '.doc']:
+        elif file_extension in ['.docx', '.doc']:
             convert_word_to_pdf(file_path, output_filename)
         else:
             print(f"Unsupported format: {file_path}")
+            return
         
         print(f"Converted: {file_path} -> {output_filename}")
         
@@ -481,8 +484,17 @@ def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: st
         pdf_path = os.path.join(folder_path, file)
         print(f"Parsing pdf: {pdf_path}")
 
+        json_path = os.path.splitext(pdf_path)[0] + ".json"
+
         try:
-            parsed = parse_pdf_to_json(pdf_path)
+            if os.path.exists(json_path):
+                import json
+                print(f"JSON already exists, loading: {json_path}")
+                with open(json_path, 'r', encoding='utf-8') as jf:
+                    parsed = json.load(jf)
+            else:
+                parsed = parse_pdf_to_json(pdf_path)
+
             items = parsed.get("items", []) or []
             # we mark which file each position came from
             for item in items:
@@ -490,7 +502,7 @@ def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: st
             all_items.extend(items)
             processed_pdfs.append(file)
         except Exception as e:
-            print(f"Failed to parse {pdf_path}: {e}")
+            print(f"Failed to parse or load {pdf_path}: {e}")
 
     if not all_items:
         print(f"In folder {folder_path} no parsed positions, writing nothing to DB")
@@ -527,42 +539,65 @@ def rename_all_files_in_folder(folder_path: str, tender_id: str):
         os.rename(old_path, new_path)
         i += 1
 
+def filter_single_tender_files(tender: dict):
+    if not tender['files_downloaded'] or tender['files_filtered']:
+        return
+
+    full_tender_num = tender['tender_number']
+    number = full_tender_num[2:] if len(full_tender_num) > 2 else full_tender_num
+
+    print(f"Examining files for tender {number}")
+
+    folder_path: str = os.path.join("./tenders_files", number)
+    if not os.path.exists(folder_path) or not os.path.isdir(folder_path):
+        return
+
+    files_in_folder = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+
+    files_with_keywords = find_files_with_keywords(folder_path, files_in_folder)
+
+
+    if (not files_with_keywords):   # if we haven’t found a single file with the words we need, then we convert all the files
+        convert_files_to_pdf(folder_path, files_in_folder)
+    else:   # if we find files with the necessary words, then we convert them and delete all the others
+        convert_files_to_pdf(folder_path, files_with_keywords)
+
+    delete_files(folder_path, files_in_folder)
+
+    rename_all_files_in_folder(folder_path, number)
+
+    update_processing_queue_field(full_tender_num, 'files_filtered', True)
+    print(f"Marked {full_tender_num} as filtered")
+
+def parse_single_tender_files(tender: dict):
+    if not tender.get('files_filtered') or tender.get('files_parsed'):
+        return
+
+    full_tender_num = tender['tender_number']
+    number = full_tender_num[2:] if len(full_tender_num) > 2 else full_tender_num
+    customer_name = tender['customer']
+
+    folder_path: str = os.path.join("./tenders_files", number)
+    if not os.path.exists(folder_path) or not os.path.isdir(folder_path):
+        return
+
+    # pass the full tender number and customer name to the database saving function
+    import_pdf_files_from_folder_to_database(folder_path, tender_number=str(full_tender_num), customer_name=customer_name)
+
+    update_processing_queue_field(full_tender_num, 'files_parsed', True)
+    print(f"Marked {full_tender_num} as parsed and completed")
+
 def file_filter():
     tenders = get_all_from_processing_queue()
 
     for tender in tenders:
-        if not tender['files_downloaded'] or tender['files_filtered']:
-            continue
+        filter_single_tender_files(tender)
 
-        full_tender_num = tender['tender_number']
-        number = full_tender_num[2:] if len(full_tender_num) > 2 else full_tender_num
-        customer_name = tender['customer']
+def file_parser():
+    tenders = get_all_from_processing_queue()
 
-        print(f"Examining files for tender {number}")
-
-        folder_path: str = os.path.join("./tenders_files", number)
-        if not os.path.exists(folder_path) or not os.path.isdir(folder_path):
-            continue
-
-        files_in_folder = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
-
-        files_with_keywords = find_files_with_keywords(folder_path, files_in_folder)
-
-
-        if (not files_with_keywords):   # if we haven’t found a single file with the words we need, then we convert all the files
-            convert_files_to_pdf(folder_path, files_in_folder)
-        else:   # if we find files with the necessary words, then we convert them and delete all the others
-            convert_files_to_pdf(folder_path, files_with_keywords)
-
-        delete_files(folder_path, files_in_folder)
-
-        rename_all_files_in_folder(folder_path, number)
-
-        # pass the full tender number and customer name to the database saving function
-        import_pdf_files_from_folder_to_database(folder_path, tender_number=str(full_tender_num), customer_name=customer_name)
-
-        update_processing_queue_field(full_tender_num, 'files_filtered', True)
-        print(f"Marked {full_tender_num} as filtered and completed")
+    for tender in tenders:
+        parse_single_tender_files(tender)
 
 
 if __name__ == "__main__":
