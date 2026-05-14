@@ -422,8 +422,16 @@ class TenderParser:
         
         return total_new
 
-def Parse_gos_zakupki():
+def Parse_gos_zakupki(interactive=True):
     parser = TenderParser('tenders.xlsx')
+
+    if not interactive:
+        try:
+            parser.parse_all_pages()
+        except Exception as e:
+            print(f"Error: {e}")
+            traceback.print_exc()
+        return
 
     while True:
         print("\n" + "="*60)

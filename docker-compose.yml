@@ -1,15 +1,47 @@
 services:
 
   backend:
-    build: ./backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: backend
     volumes:
       - ./backend:/app
+    environment:
+      - DB_HOST=db
+      - DB_NAME=appdb
+      - DB_USER=user
+      - DB_PASS=pass
+      - DB_PORT=5432
+    env_file:
+      - .env
     ports:
       - "8000:8000"
     depends_on:
       - db
-      - llm
+
+  parser:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: parser
+    volumes:
+      - ./parser:/app/parser
+      - ./backend:/app/backend
+      - ./.env:/app/.env
+    environment:
+      - DB_HOST=db
+      - DB_NAME=appdb
+      - DB_USER=user
+      - DB_PASS=pass
+      - DB_PORT=5432
+      - PYTHONPATH=/app/parser:/app/backend
+      - PARSER_INTERVAL_SECONDS=3600
+    env_file:
+      - .env
+    command: python parser/scheduler.py
+    depends_on:
+      - db
 
   db:
     image: postgres:15
@@ -20,17 +52,5 @@ services:
       POSTGRES_PASSWORD: pass
     ports:
       - "5432:5432"
-
-  llm:
-    image: ollama/ollama
-    container_name: llm
-    ports:
-      - "11434:11434"
     volumes:
-      - ollama:/root/.ollama
-      - ./llm-service/models:/models
-      - ./init:/init
-    entrypoint: ["/bin/bash", "/init/init.sh"]
-
-volumes:
-  ollama:
+      - ./db/init_schema.sql:/docker-entrypoint-initdb.d/init_schema.sql
