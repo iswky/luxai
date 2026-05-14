@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS r_luxai.processing_queue (
     city VARCHAR(255),
     files_downloaded BOOLEAN DEFAULT FALSE,
     files_filtered BOOLEAN DEFAULT FALSE,
+    files_parsed BOOLEAN DEFAULT FALSE,
     createdate TIMESTAMP DEFAULT NOW(),
     updatedate TIMESTAMP DEFAULT NOW()
 );

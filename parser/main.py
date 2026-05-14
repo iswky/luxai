@@ -1,7 +1,7 @@
 from zakupki_parser import Parse_gos_zakupki
 from city_parse import city_parse
 from download_files_gos_zakupki import download_tenders_files
-from file_filter import file_filter
+from file_filter import file_filter, file_parser
 from tender_validator import tender_validator, deduplicate_tenders_in_excel
 from db import deduplicate_tenders_in_db
 import os
@@ -15,6 +15,7 @@ def main():
     download_tenders_files()
     deduplicate_tenders_in_db()
     file_filter()
+    file_parser()
  
 if __name__ == "__main__":
     main()
