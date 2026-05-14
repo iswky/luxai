@@ -226,15 +226,15 @@ def save_tender_to_db(
 
             conn.commit()
             logger.info(
-                f"✅ Тендер {tender_number} (db id={tender_id}) записан, позиций: {inserted}"
+                f"Tender {tender_number} (db id={tender_id}) saved, items: {inserted}"
             )
             return tender_id
 
     except psycopg2.Error as e:
-        logger.error(f"❌ Ошибка PostgreSQL при сохранении тендера {tender_number}: {e}")
+        logger.error(f"PostgreSQL error saving tender {tender_number}: {e}")
         return None
     except Exception as e:
-        logger.error(f"❌ Непредвиденная ошибка при сохранении тендера {tender_number}: {e}")
+        logger.error(f"Unexpected error saving tender {tender_number}: {e}")
         return None
 
 
@@ -259,11 +259,11 @@ def delete_tender_from_db(tender_number: str) -> bool:
                 deleted = cur.fetchone()
             conn.commit()
             if deleted:
-                logger.info(f"🗑 Тендер {tender_number} удалён из БД (id={deleted[0]})")
+                logger.info(f"Tender {tender_number} deleted from DB (id={deleted[0]})")
                 return True
             return False
     except psycopg2.Error as e:
-        logger.error(f"❌ Ошибка PostgreSQL при удалении тендера {tender_number}: {e}")
+        logger.error(f"PostgreSQL error deleting tender {tender_number}: {e}")
         return False
 
 
@@ -290,7 +290,7 @@ def deduplicate_tenders_in_db() -> int:
                 dup_ids = [row[0] for row in cur.fetchall()]
 
                 if not dup_ids:
-                    logger.info("✅ Дублей в r_luxai.tenders не найдено")
+                    logger.info("No duplicates in r_luxai.tenders ")
                     return 0
 
                 cur.execute(
@@ -302,10 +302,10 @@ def deduplicate_tenders_in_db() -> int:
                     [dup_ids],
                 )
             conn.commit()
-            logger.info(f"🗑 Удалено дублей тендеров в БД: {len(dup_ids)}")
+            logger.info(f"Deleted duplicate tenders in DB: {len(dup_ids)}")
             return len(dup_ids)
     except psycopg2.Error as e:
-        logger.error(f"❌ Ошибка PostgreSQL при дедупликации: {e}")
+        logger.error(f"PostgreSQL error deduplication: {e}")
         return 0
 
 # creates the processing_queue table if it doesn't exist
@@ -335,7 +335,7 @@ def ensure_processing_queue_table():
                 )
             conn.commit()
     except psycopg2.Error as e:
-        logger.error(f"❌ Ошибка PostgreSQL при создании таблицы processing_queue: {e}")
+        logger.error(f"PostgreSQL error creating processing_queue table: {e}")
 
 # fetches all tender numbers from the processing queue
 def get_existing_queue_numbers() -> set:
@@ -346,7 +346,7 @@ def get_existing_queue_numbers() -> set:
                 rows = cur.fetchall()
                 return {row[0] for row in rows}
     except psycopg2.Error as e:
-        logger.error(f"❌ Ошибка PostgreSQL при получении номеров из очереди: {e}")
+        logger.error(f"PostgreSQL error getting numbers from queue: {e}")
         return set()
 
 # inserts a new tender into the processing queue
@@ -381,7 +381,7 @@ def add_to_processing_queue(tenders: dict) -> int:
             conn.commit()
         return added
     except psycopg2.Error as e:
-        logger.error(f"❌ Ошибка PostgreSQL при добавлении в очередь: {e}")
+        logger.error(f"PostgreSQL error adding to queue: {e}")
         return 0
 
 # gets all items in processing queue
@@ -399,7 +399,7 @@ def get_all_from_processing_queue() -> list:
                 columns = [desc[0] for desc in cur.description]
                 return [dict(zip(columns, row)) for row in cur.fetchall()]
     except psycopg2.Error as e:
-        logger.error(f"❌ Ошибка PostgreSQL при получении очереди: {e}")
+        logger.error(f"PostgreSQL error getting queue: {e}")
         return []
 
 # updates a specific field in the processing queue
@@ -416,7 +416,7 @@ def update_processing_queue_field(tender_number: str, field: str, value: Any):
                 )
             conn.commit()
     except psycopg2.Error as e:
-        logger.error(f"❌ Ошибка PostgreSQL при обновлении очереди: {e}")
+        logger.error(f"PostgreSQL error updating queue: {e}")
 
 # removes an item from processing queue
 def remove_from_processing_queue(tender_number: str):
@@ -426,4 +426,4 @@ def remove_from_processing_queue(tender_number: str):
                 cur.execute("DELETE FROM r_luxai.processing_queue WHERE tender_number = %s;", [tender_number])
             conn.commit()
     except psycopg2.Error as e:
-        logger.error(f"❌ Ошибка PostgreSQL при удалении из очереди: {e}")
+        logger.error(f"PostgreSQL error deleting from queue: {e}")
