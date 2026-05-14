@@ -24,6 +24,7 @@ from .db_repository import (
 SELECTED_SHOPS = {}
 
 
+# description: function get_application_or_404. args: application_id. returns: any.
 def get_application_or_404(application_id):
     application = fetch_application_detail(application_id)
 
@@ -33,6 +34,7 @@ def get_application_or_404(application_id):
     return application
 
 
+# description: function _documents_roots. args: . returns: any.
 def _documents_roots():
     candidates = [
         settings.TENDERS_FILES_DIR,
@@ -50,6 +52,7 @@ def _documents_roots():
     return roots
 
 
+# description: function _is_inside_root. args: path, roots. returns: any.
 def _is_inside_root(path, roots):
     resolved = path.resolve()
 
@@ -63,6 +66,7 @@ def _is_inside_root(path, roots):
     return False
 
 
+# description: function _resolve_document_path. args: path_value. returns: any.
 def _resolve_document_path(path_value):
     if not path_value:
         return None
@@ -97,6 +101,7 @@ def _resolve_document_path(path_value):
     return None
 
 
+# description: function _tender_folder_names. args: tender_number. returns: any.
 def _tender_folder_names(tender_number):
     tender_number = str(tender_number or '').strip()
     names = []
@@ -110,6 +115,7 @@ def _tender_folder_names(tender_number):
     return list(dict.fromkeys(names))
 
 
+# description: function _find_tender_file. args: tender_number. returns: any.
 def _find_tender_file(tender_number):
     for root in _documents_roots():
         for folder_name in _tender_folder_names(tender_number):
@@ -128,6 +134,7 @@ def _find_tender_file(tender_number):
     return None
 
 
+# description: function _file_response_from_path. args: file_path, filename. returns: any.
 def _file_response_from_path(file_path, filename=None):
     content_type = mimetypes.guess_type(file_path.name)[0] or 'application/octet-stream'
 
@@ -138,6 +145,7 @@ def _file_response_from_path(file_path, filename=None):
     )
 
 
+# description: function _file_response_from_db_bytes. args: file_info. returns: any.
 def _file_response_from_db_bytes(file_info):
     document = file_info.get('document') if file_info else None
 
@@ -154,6 +162,7 @@ def _file_response_from_db_bytes(file_info):
     )
 
 
+# description: function _open_tender_file. args: file_info. returns: any.
 def _open_tender_file(file_info):
     if not file_info:
         raise Http404('Файл заявки не найден')
@@ -176,10 +185,12 @@ def _open_tender_file(file_info):
     raise Http404('Файл заявки не найден')
 
 
+# description: function home. args: request. returns: any.
 def home(request):
     return render(request, 'webui/home.html')
 
 
+# description: function files_page. args: request. returns: any.
 def files_page(request):
     files = fetch_files()
 
@@ -188,14 +199,17 @@ def files_page(request):
     })
 
 
+# description: function open_document_file. args: request, file_id. returns: any.
 def open_document_file(request, file_id):
     return _open_tender_file(fetch_document_file(file_id))
 
 
+# description: function open_application_file. args: request, application_id. returns: any.
 def open_application_file(request, application_id):
     return _open_tender_file(fetch_application_file(application_id))
 
 
+# description: function update_prompt. args: request, file_id. returns: any.
 def update_prompt(request, file_id):
     # there is currently no table/field for file prompts in the database.
     # when tender_documents or ai_parse_runs appears,
@@ -203,6 +217,7 @@ def update_prompt(request, file_id):
     return redirect('files_page')
 
 
+# description: function equipment_page. args: request. returns: any.
 def equipment_page(request):
     equipment = fetch_equipment()
 
@@ -211,6 +226,7 @@ def equipment_page(request):
     })
 
 
+# description: function applications_page. args: request. returns: any.
 def applications_page(request):
     filters = {
         'date_from': request.GET.get('date_from') or '',
@@ -231,6 +247,7 @@ def applications_page(request):
     })
 
 
+# description: function application_detail_page. args: request, application_id. returns: any.
 def application_detail_page(request, application_id):
     application = get_application_or_404(application_id)
 
@@ -242,6 +259,7 @@ def application_detail_page(request, application_id):
     })
 
 
+# description: function select_shop. args: request, application_id. returns: any.
 def select_shop(request, application_id):
     if request.method == 'POST':
         item_id = int(request.POST.get('item_id'))
@@ -261,6 +279,7 @@ def select_shop(request, application_id):
     return redirect('application_detail_page', application_id=application_id)
 
 
+# description: function contract_page. args: request, application_id. returns: any.
 def contract_page(request, application_id):
     application = get_application_or_404(application_id)
 

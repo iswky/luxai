@@ -4,16 +4,18 @@ import shutil
 import os
 
 try:
-    from db import delete_tender_from_db, get_all_from_processing_queue, remove_from_processing_queue
+    from database.db import delete_tender_from_db, get_all_from_processing_queue, remove_from_processing_queue
 except ImportError:
     # if psycopg2 is not installed or we do not run it from the parser/ folder
     def delete_tender_from_db(tender_number: str) -> bool:
         print(f"db.py unavailable, tender {tender_number} untouched in DB")
         return False
 
+# description: function get_all_from_processing_queue. args: . returns: list.
     def get_all_from_processing_queue() -> list:
         return []
 
+# description: function remove_from_processing_queue. args: tender_number. returns: any.
     def remove_from_processing_queue(tender_number: str):
         pass
 
@@ -36,9 +38,11 @@ def _wipe_tender_files(tender_number: str) -> None:
         except Exception as e:
             print(f"Failed to delete folder {folder}: {e}")
 
+# description: function deduplicate_tenders_in_excel. args: . returns: int.
 def deduplicate_tenders_in_excel() -> int:
     return 0
 
+# description: function tender_validator. args: . returns: any.
 def tender_validator():
     tenders = get_all_from_processing_queue()
 

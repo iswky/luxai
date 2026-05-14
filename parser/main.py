@@ -1,11 +1,12 @@
-from zakupki_parser import Parse_gos_zakupki
-from city_parse import city_parse
-from download_files_gos_zakupki import download_tenders_files
-from file_filter import file_filter, file_parser
-from tender_validator import tender_validator, deduplicate_tenders_in_excel
-from db import deduplicate_tenders_in_db
+from scraper.zakupki_scraper import Parse_gos_zakupki
+from scraper.city_scraper import city_parse
+from processor.downloader import download_tenders_files
+from processor.file_filter import file_filter, file_parser
+from processor.validator import tender_validator, deduplicate_tenders_in_excel
+from database.db import deduplicate_tenders_in_db
 import os
  
+# description: function process_queue. args: . returns: any.
 def process_queue():
     print("Processing queue...")
     city_parse()
@@ -15,6 +16,7 @@ def process_queue():
     file_parser()
     print("Queue processed.")
 
+# description: function main. args: . returns: any.
 def main():
     interactive = os.getenv("INTERACTIVE_MODE", "true").lower() == "true"
 

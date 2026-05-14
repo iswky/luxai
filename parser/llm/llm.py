@@ -7,7 +7,7 @@ import logging
 import sys
 
 from openai import OpenAI
-from pdf_extractor import PDFExtractor
+from llm.pdf_extractor import PDFExtractor
 
 logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
 logger = logging.getLogger(__name__)

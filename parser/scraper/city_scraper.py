@@ -5,7 +5,7 @@ import logging
 import time
 import re
 
-from db import get_all_from_processing_queue, update_processing_queue_field
+from database.db import get_all_from_processing_queue, update_processing_queue_field
 
 logging.basicConfig(level = logging.INFO, filename = "parse_logs.log", filemode = "w")
 
@@ -43,6 +43,7 @@ def extract_city_from_address(address: str) -> str:
     
     return parts[0] if parts else address
 
+# description: function extract_city. args: html_content. returns: str.
 def extract_city(html_content: str) -> str:
     soup: BeautifulSoup = BeautifulSoup(html_content, 'html.parser')
     city: str
@@ -78,6 +79,7 @@ def extract_city(html_content: str) -> str:
 
     return "Не указан"
 
+# description: function city_parse. args: . returns: any.
 def city_parse():
     try:
         tenders = get_all_from_processing_queue()

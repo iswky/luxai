@@ -3,8 +3,8 @@ from typing import List, Tuple, Any
 
 
 
-from llm import parse_pdf_to_json
-from db import save_tender_to_db
+from llm.llm import parse_pdf_to_json
+from database.db import save_tender_to_db
 import os
 import re
 
@@ -88,6 +88,7 @@ def delete_files(path: str, filenames: List[str]):
         except Exception as e:
             print(f"Error deleting {filename}: {e}")
 
+# description: function convert_files_to_pdf. args: folder_path, files. returns: any.
 def convert_files_to_pdf(folder_path: str, files: List[str]):
     # checking the existence of the directory
     if not os.path.exists(folder_path):
@@ -101,6 +102,7 @@ def convert_files_to_pdf(folder_path: str, files: List[str]):
 
         convert1file2pdf(file_path)
 
+# description: function convert1file2pdf. args: file_path. returns: any.
 def convert1file2pdf(file_path: str):
     # checking the existence of the directory
     if not os.path.exists(file_path):
@@ -456,7 +458,7 @@ def find_files_with_keywords(
     
     return matched_files
 
-from db import get_all_from_processing_queue, update_processing_queue_field
+from database.db import get_all_from_processing_queue, update_processing_queue_field
 
 # chews through all pdf files from the tender folder and stashes them in the database.if there are several pdfs in the folder, all their positions will be included in one tender (via upsert in save_tender_to_db).when restarted, old tender positions are deleted and written over again (see db.save_tender_to_db).
 def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: str = None, customer_name: str = None):
@@ -523,6 +525,7 @@ def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: st
     else:
         print(f"Saving tender {tender_number} to DB failed")
 
+# description: function rename_all_files_in_folder. args: folder_path, tender_id. returns: any.
 def rename_all_files_in_folder(folder_path: str, tender_id: str):
     if not os.path.exists(folder_path):
         print(f"Folder {folder_path} not found")
@@ -539,6 +542,7 @@ def rename_all_files_in_folder(folder_path: str, tender_id: str):
         os.rename(old_path, new_path)
         i += 1
 
+# description: function filter_single_tender_files. args: tender. returns: any.
 def filter_single_tender_files(tender: dict):
     if not tender['files_downloaded'] or tender['files_filtered']:
         return
@@ -569,6 +573,7 @@ def filter_single_tender_files(tender: dict):
     update_processing_queue_field(full_tender_num, 'files_filtered', True)
     print(f"Marked {full_tender_num} as filtered")
 
+# description: function parse_single_tender_files. args: tender. returns: any.
 def parse_single_tender_files(tender: dict):
     if not tender.get('files_filtered') or tender.get('files_parsed'):
         return
@@ -587,12 +592,14 @@ def parse_single_tender_files(tender: dict):
     update_processing_queue_field(full_tender_num, 'files_parsed', True)
     print(f"Marked {full_tender_num} as parsed and completed")
 
+# description: function file_filter. args: . returns: any.
 def file_filter():
     tenders = get_all_from_processing_queue()
 
     for tender in tenders:
         filter_single_tender_files(tender)
 
+# description: function file_parser. args: . returns: any.
 def file_parser():
     tenders = get_all_from_processing_queue()
 
@@ -601,7 +608,7 @@ def file_parser():
 
 
 if __name__ == "__main__":
-    from db import deduplicate_tenders_in_db
+    from database.db import deduplicate_tenders_in_db
 
     deduplicate_tenders_in_db()
     file_filter()
