@@ -7,7 +7,7 @@ import re
 
 from db import get_all_from_processing_queue, update_processing_queue_field
 
-logging.basicConfig(level = logging.DEBUG, filename = "parse_logs.log", filemode = "w")
+logging.basicConfig(level = logging.INFO, filename = "parse_logs.log", filemode = "w")
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
