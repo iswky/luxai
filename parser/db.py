@@ -239,6 +239,20 @@ def save_tender_to_db(
 
 
 # removes a tender and all its positions from the database by tender_number.spits out true if something was actually deleted.
+# checks if a tender is already in the database
+def is_tender_in_db(tender_number: str) -> bool:
+    try:
+        with psycopg2.connect(**DB_CONFIG) as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT 1 FROM r_luxai.tenders WHERE tender_number = %s LIMIT 1;",
+                    [tender_number],
+                )
+                return cur.fetchone() is not None
+    except psycopg2.Error as e:
+        logger.error(f"PostgreSQL error checking if tender {tender_number} exists: {e}")
+        return False
+
 def delete_tender_from_db(tender_number: str) -> bool:
     try:
         with psycopg2.connect(**DB_CONFIG) as conn:

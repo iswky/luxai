@@ -530,42 +530,45 @@ def rename_all_files_in_folder(folder_path: str, tender_id: str):
         os.rename(old_path, new_path)
         i += 1
 
+def process_single_tender_files(tender: dict):
+    if not tender['files_downloaded'] or tender['files_filtered']:
+        return
+
+    full_tender_num = tender['tender_number']
+    number = full_tender_num[2:] if len(full_tender_num) > 2 else full_tender_num
+    customer_name = tender['customer']
+
+    print(f"Examining files for tender {number}")
+
+    folder_path: str = os.path.join("./tenders_files", number)
+    if not os.path.exists(folder_path) or not os.path.isdir(folder_path):
+        return
+
+    files_in_folder = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
+
+    files_with_keywords = find_files_with_keywords(folder_path, files_in_folder)
+
+
+    if (not files_with_keywords):   # if we haven’t found a single file with the words we need, then we convert all the files
+        convert_files_to_pdf(folder_path, files_in_folder)
+    else:   # if we find files with the necessary words, then we convert them and delete all the others
+        convert_files_to_pdf(folder_path, files_with_keywords)
+
+    delete_files(folder_path, files_in_folder)
+
+    rename_all_files_in_folder(folder_path, number)
+
+    # pass the full tender number and customer name to the database saving function
+    import_pdf_files_from_folder_to_database(folder_path, tender_number=str(full_tender_num), customer_name=customer_name)
+
+    update_processing_queue_field(full_tender_num, 'files_filtered', True)
+    print(f"Marked {full_tender_num} as filtered and completed")
+
 def file_filter():
     tenders = get_all_from_processing_queue()
 
     for tender in tenders:
-        if not tender['files_downloaded'] or tender['files_filtered']:
-            continue
-
-        full_tender_num = tender['tender_number']
-        number = full_tender_num[2:] if len(full_tender_num) > 2 else full_tender_num
-        customer_name = tender['customer']
-
-        print(f"Examining files for tender {number}")
-
-        folder_path: str = os.path.join("./tenders_files", number)
-        if not os.path.exists(folder_path) or not os.path.isdir(folder_path):
-            continue
-
-        files_in_folder = [f for f in os.listdir(folder_path) if os.path.isfile(os.path.join(folder_path, f))]
-
-        files_with_keywords = find_files_with_keywords(folder_path, files_in_folder)
-
-
-        if (not files_with_keywords):   # if we haven’t found a single file with the words we need, then we convert all the files
-            convert_files_to_pdf(folder_path, files_in_folder)
-        else:   # if we find files with the necessary words, then we convert them and delete all the others
-            convert_files_to_pdf(folder_path, files_with_keywords)
-
-        delete_files(folder_path, files_in_folder)
-
-        rename_all_files_in_folder(folder_path, number)
-
-        # pass the full tender number and customer name to the database saving function
-        import_pdf_files_from_folder_to_database(folder_path, tender_number=str(full_tender_num), customer_name=customer_name)
-
-        update_processing_queue_field(full_tender_num, 'files_filtered', True)
-        print(f"Marked {full_tender_num} as filtered and completed")
+        process_single_tender_files(tender)
 
 
 if __name__ == "__main__":
