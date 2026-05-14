@@ -342,9 +342,16 @@ def ensure_processing_queue_table():
                         city VARCHAR(255),
                         files_downloaded BOOLEAN DEFAULT FALSE,
                         files_filtered BOOLEAN DEFAULT FALSE,
+                        files_parsed BOOLEAN DEFAULT FALSE,
                         createdate TIMESTAMP DEFAULT NOW(),
                         updatedate TIMESTAMP DEFAULT NOW()
                     );
+                    """
+                )
+                cur.execute(
+                    """
+                    ALTER TABLE r_luxai.processing_queue
+                    ADD COLUMN IF NOT EXISTS files_parsed BOOLEAN DEFAULT FALSE;
                     """
                 )
             conn.commit()
@@ -405,7 +412,7 @@ def get_all_from_processing_queue() -> list:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    SELECT id, tender_number, name, url, price, law, end_date, customer, first_seen, city, files_downloaded, files_filtered
+                    SELECT id, tender_number, name, url, price, law, end_date, customer, first_seen, city, files_downloaded, files_filtered, files_parsed
                     FROM r_luxai.processing_queue
                     ORDER BY id;
                     """
@@ -418,7 +425,7 @@ def get_all_from_processing_queue() -> list:
 
 # updates a specific field in the processing queue
 def update_processing_queue_field(tender_number: str, field: str, value: Any):
-    allowed_fields = ['city', 'files_downloaded', 'files_filtered']
+    allowed_fields = ['city', 'files_downloaded', 'files_filtered', 'files_parsed']
     if field not in allowed_fields:
         return
     try:

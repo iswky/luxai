@@ -484,8 +484,17 @@ def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: st
         pdf_path = os.path.join(folder_path, file)
         print(f"Parsing pdf: {pdf_path}")
 
+        json_path = os.path.splitext(pdf_path)[0] + ".json"
+
         try:
-            parsed = parse_pdf_to_json(pdf_path)
+            if os.path.exists(json_path):
+                import json
+                print(f"JSON already exists, loading: {json_path}")
+                with open(json_path, 'r', encoding='utf-8') as jf:
+                    parsed = json.load(jf)
+            else:
+                parsed = parse_pdf_to_json(pdf_path)
+
             items = parsed.get("items", []) or []
             # we mark which file each position came from
             for item in items:
@@ -493,7 +502,7 @@ def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: st
             all_items.extend(items)
             processed_pdfs.append(file)
         except Exception as e:
-            print(f"Failed to parse {pdf_path}: {e}")
+            print(f"Failed to parse or load {pdf_path}: {e}")
 
     if not all_items:
         print(f"In folder {folder_path} no parsed positions, writing nothing to DB")
@@ -530,13 +539,12 @@ def rename_all_files_in_folder(folder_path: str, tender_id: str):
         os.rename(old_path, new_path)
         i += 1
 
-def process_single_tender_files(tender: dict):
+def filter_single_tender_files(tender: dict):
     if not tender['files_downloaded'] or tender['files_filtered']:
         return
 
     full_tender_num = tender['tender_number']
     number = full_tender_num[2:] if len(full_tender_num) > 2 else full_tender_num
-    customer_name = tender['customer']
 
     print(f"Examining files for tender {number}")
 
@@ -558,17 +566,38 @@ def process_single_tender_files(tender: dict):
 
     rename_all_files_in_folder(folder_path, number)
 
+    update_processing_queue_field(full_tender_num, 'files_filtered', True)
+    print(f"Marked {full_tender_num} as filtered")
+
+def parse_single_tender_files(tender: dict):
+    if not tender.get('files_filtered') or tender.get('files_parsed'):
+        return
+
+    full_tender_num = tender['tender_number']
+    number = full_tender_num[2:] if len(full_tender_num) > 2 else full_tender_num
+    customer_name = tender['customer']
+
+    folder_path: str = os.path.join("./tenders_files", number)
+    if not os.path.exists(folder_path) or not os.path.isdir(folder_path):
+        return
+
     # pass the full tender number and customer name to the database saving function
     import_pdf_files_from_folder_to_database(folder_path, tender_number=str(full_tender_num), customer_name=customer_name)
 
-    update_processing_queue_field(full_tender_num, 'files_filtered', True)
-    print(f"Marked {full_tender_num} as filtered and completed")
+    update_processing_queue_field(full_tender_num, 'files_parsed', True)
+    print(f"Marked {full_tender_num} as parsed and completed")
 
 def file_filter():
     tenders = get_all_from_processing_queue()
 
     for tender in tenders:
-        process_single_tender_files(tender)
+        filter_single_tender_files(tender)
+
+def file_parser():
+    tenders = get_all_from_processing_queue()
+
+    for tender in tenders:
+        parse_single_tender_files(tender)
 
 
 if __name__ == "__main__":

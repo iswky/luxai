@@ -6,7 +6,6 @@ import requests
 import os
 
 from db import get_all_from_processing_queue, update_processing_queue_field, is_tender_in_db
-from file_filter import process_single_tender_files
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -338,12 +337,6 @@ def download_tenders_files():
 
             update_processing_queue_field(full_tender_num, 'files_downloaded', True)
             print(f"Marked {full_tender_num} as downloaded")
-            
-            # Update the local tender dict to reflect changes so that processing does not skip it prematurely
-            tender['files_downloaded'] = True
-
-            # Immediately chain to parsing
-            process_single_tender_files(tender)
 
         except requests.RequestException as e:
             print(f"Error downloading files for {tender_id}: {e}")
