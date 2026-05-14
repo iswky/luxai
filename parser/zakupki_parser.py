@@ -8,30 +8,18 @@ import csv
 import os
 import re
 
-try:
-    from openpyxl import Workbook, load_workbook
-    from openpyxl.styles import Font, Alignment, PatternFill
-    OPENPYXL_AVAILABLE = True
-    print("openpyxl loaded successfully")
-except ImportError as e:
-    OPENPYXL_AVAILABLE = False
-    print(f"openpyxl not installed: {e}")
+from db import get_existing_queue_numbers, add_to_processing_queue, ensure_processing_queue_table
 
 # tender parser with extended data
 class TenderParser:
 
-    red_fill: PatternFill
-    excel_file: str
-    csv_file: str
     headers: Dict[str, str]
     base_url: str
     base_params: Dict[str, str]
     existing_numbers: Set[str]
 
-    def __init__(self, excel_file='tenders.xlsx'):
-        self.red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-        self.excel_file = excel_file
-        self.csv_file = excel_file.replace('.xlsx', '.csv')
+    def __init__(self):
+        ensure_processing_queue_table()
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -73,28 +61,17 @@ class TenderParser:
         
         return params
 
-    # grabs existing tender numbers from excel
+    # grabs existing tender numbers from db
     def load_existing_tenders(self):
-        existing_numbers = set()
-        
-        if OPENPYXL_AVAILABLE and os.path.exists(self.excel_file):
-            try:
-                wb = load_workbook(self.excel_file)
-                ws = wb.active
-                
-                for row in ws.iter_rows(min_row=2, values_only=True):
-                    if row[0]:
-                        existing_numbers.add(str(row[0]).strip())
-                
-                print(f"Existing tenders loaded: {len(existing_numbers)}")
-            except Exception as e:
-                print(f"Error loading: {e}")
-        else:
-            print("File not found or empty. All tenders will be added.")
-        
-        return existing_numbers
+        try:
+            existing_numbers = get_existing_queue_numbers()
+            print(f"Existing tenders loaded: {len(existing_numbers)}")
+            return existing_numbers
+        except Exception as e:
+            print(f"Error loading existing tenders: {e}")
+            return set()
     
-    # stashes new tenders (only those that don't exist yet)
+    # stashes new tenders in db (only those that don't exist yet)
     def save_tenders(self, new_tenders):
         if not new_tenders:
             return 0
@@ -110,145 +87,9 @@ class TenderParser:
             print(f"No new tenders to save")
             return 0
         
-        if OPENPYXL_AVAILABLE:
-            result = self._append_to_excel(truly_new)
-        else:
-            result = self._append_to_csv(truly_new)
-        
-        return result
-    
-    # finds all empty rows in a table.spits out a list of line numbers where the first column is empty.
-    def _find_empty_rows(self, ws):
-        empty_rows = []
-        max_row = ws.max_row
-        
-        # if the table has only headers, there are no empty rows
-        if max_row <= 1:
-            return []
-        
-        # collecting all line numbers with an empty first column
-        for row in range(2, max_row + 1):
-            if ws.cell(row=row, column=1).value is None:
-                empty_rows.append(row)
-            else:
-                # checking if the line is empty (all columns are empty)
-                is_completely_empty = True
-                for col in range(1, 12):  # checking all 11 columns
-                    if ws.cell(row=row, column=col).value is not None:
-                        is_completely_empty = False
-                        break
-                if is_completely_empty:
-                    empty_rows.append(row)
-        
-        return sorted(empty_rows)  # sort for sequential filling
-
-    # adds new tenders in excel, filling in the blank lines at the beginning
-    def _append_to_excel(self, new_tenders):
-        try:
-            # open or create a file
-            if os.path.exists(self.excel_file):
-                wb = load_workbook(self.excel_file)
-                ws = wb.active
-            else:
-                wb = Workbook()
-                ws = wb.active
-                ws.title = "Тендеры"
-                headers = ['Номер тендера', 'Название/Объект закупки', 'Ссылка', 
-                          'Цена (руб)', 'ФЗ', 'Окончание подачи заявок', 
-                          'Заказчик', 'Дата добавления', 'Город', 'Файлы скачаны', 'Файлы отфильтрованы']
-                ws.append(headers)
-            
-            ws.column_dimensions['A'].width = 25
-            ws.column_dimensions['B'].width = 70
-            ws.column_dimensions['C'].width = 60
-            ws.column_dimensions['D'].width = 18
-            ws.column_dimensions['E'].width = 10
-            ws.column_dimensions['F'].width = 20
-            ws.column_dimensions['G'].width = 50
-            ws.column_dimensions['H'].width = 20
-            ws.column_dimensions['I'].width = 30
-            ws.column_dimensions['J'].width = 20
-            ws.column_dimensions['K'].width = 30
-
-            # finding empty lines
-            empty_rows = self._find_empty_rows(ws)
-            
-            # creating a queue of empty lines
-            from collections import deque
-            empty_rows_queue = deque(empty_rows)
-            
-            # preparing data to add
-            added_count = 0
-            next_new_row = ws.max_row + 1
-            
-            for number, info in new_tenders.items():
-                # take the next empty line or create a new one
-                if empty_rows_queue:
-                    target_row = empty_rows_queue.popleft()
-                    location = f"пустую строку {target_row}"
-                else:
-                    target_row = next_new_row
-                    next_new_row += 1
-                    location = f"новую строку {target_row}"
-                
-                # recording data
-                ws.cell(row=target_row, column=1, value=number)
-                ws.cell(row=target_row, column=2, value=info['name'])
-                ws.cell(row=target_row, column=3, value=info['url'])
-                ws.cell(row=target_row, column=4, value=info.get('price', 'Не указана'))
-                ws.cell(row=target_row, column=5, value=info.get('law', 'Не указан'))
-                ws.cell(row=target_row, column=6, value=info.get('end_date', 'Не указана'))
-                ws.cell(row=target_row, column=7, value=info.get('customer', 'Не указан'))
-                ws.cell(row=target_row, column=8, value=info['first_seen'])
-                ws.cell(row=target_row, column=9, value=info.get('city', 'Не указан'))
-                ws.cell(row=target_row, column=10, value='False')
-                ws.cell(row=target_row, column=10).fill = self.red_fill
-                ws.cell(row=target_row, column=11, value='False')
-                ws.cell(row=target_row, column=11).fill = self.red_fill
-                
-                added_count += 1
-                print(f"Tender {number} added to {location}")
-            
-            wb.save(self.excel_file)
-            print(f"Added {added_count} tenders (empty rows used: {len(empty_rows[:added_count])})")
-            return added_count
-            
-        except Exception as e:
-            print(f"Save error: {e}")
-            traceback.print_exc()
-            return 0
-    
-    # stashes to csv with columns city and files downloaded
-    def _append_to_csv(self, new_tenders):
-        try:
-            file_exists = os.path.exists(self.csv_file)
-            
-            with open(self.csv_file, 'a', newline='', encoding='utf-8-sig') as f:
-                writer = csv.writer(f)
-                if not file_exists:
-                    # headings with new columns
-                    writer.writerow(['number', 'name', 'url', 'price', 'law', 'end_date', 
-                                    'customer', 'first_seen', 'city', 'files_downloaded'])
-                
-                for number, info in new_tenders.items():
-                    writer.writerow([
-                        number, 
-                        info['name'], 
-                        info['url'],
-                        info.get('price', 'Не указана'),
-                        info.get('law', 'Не указан'),
-                        info.get('end_date', 'Не указана'),
-                        info.get('customer', 'Не указан'),
-                        info['first_seen'],
-                        info.get('city', 'Не указан'),  # city (still a stub, later you can parse it)
-                        'False'                         # files downloaded = false
-                    ])
-            
-            print(f"Saved {len(new_tenders)} new tenders to {self.csv_file}")
-            return len(new_tenders)
-        except Exception as e:
-            print(f"Error: {e}")
-            return 0
+        added_count = add_to_processing_queue(truly_new)
+        print(f"Added {added_count} tenders to database")
+        return added_count
     
     # chews through the page
     def parse_page(self, page_number: int = 1):
@@ -418,12 +259,11 @@ class TenderParser:
         
         print(f"\n TOTAL NEW TENDERS ADDED: {total_new}")
         print(f"Total in database: {len(self.existing_numbers)}")
-        print(f"File: {self.excel_file}")
         
         return total_new
 
 def Parse_gos_zakupki(interactive=True):
-    parser = TenderParser('tenders.xlsx')
+    parser = TenderParser()
 
     if not interactive:
         try:
