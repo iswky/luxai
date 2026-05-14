@@ -14,6 +14,12 @@ urlpatterns = [
     ),
 
     path(
+        'files/<int:file_id>/open/',
+        views.open_document_file,
+        name='open_document_file',
+    ),
+
+    path(
         'applications/',
         views.applications_page,
         name='applications_page',
@@ -23,6 +29,12 @@ urlpatterns = [
         'applications/<int:application_id>/',
         views.application_detail_page,
         name='application_detail_page',
+    ),
+
+    path(
+        'applications/<int:application_id>/file/',
+        views.open_application_file,
+        name='open_application_file',
     ),
 
     path(

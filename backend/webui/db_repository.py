@@ -1,17 +1,62 @@
 from .db import get_connection
 
+from .cities import RUSSIAN_CITIES
+
+
+def db_column_exists(table_name, column_name, schema_name='r_luxai'):
+    """Check DB columns so old dumps keep working before migration."""
+    query = """
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = %s
+          AND table_name = %s
+          AND column_name = %s
+        LIMIT 1;
+    """
+
+    try:
+        with get_connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(query, [schema_name, table_name, column_name])
+                return cur.fetchone() is not None
+    except Exception:
+        return False
+
+
+def documents_have_file_metadata():
+    return db_column_exists('documents', 'document_path')
+
+
+def document_metadata_select(alias='d'):
+    if documents_have_file_metadata():
+        return f'{alias}.document_path, {alias}.filename'
+
+    return 'NULL::text AS document_path, NULL::text AS filename'
+
+
+def application_file_url(application_id):
+    return f'/applications/{application_id}/file/'
+
+
+def document_file_url(document_id):
+    return f'/files/{document_id}/open/'
+
 
 def fetch_files():
-    query = """
+    query = f"""
         SELECT
             d.id,
             d.tender_id,
+            {document_metadata_select('d')},
             t.tender_number,
             t.customer_name,
             t.status,
+            t.prompt,
+            pq.city,
             d.createdate
         FROM r_luxai.documents d
         JOIN r_luxai.tenders t ON t.id = d.tender_id
+        LEFT JOIN r_luxai.processing_queue pq ON pq.tender_number = t.tender_number
         ORDER BY d.createdate DESC;
     """
 
@@ -23,15 +68,18 @@ def fetch_files():
     files = []
 
     for row in rows:
+        filename = row.get('filename') or f"{row['tender_number']}.pdf"
+
         files.append({
             'id': row['id'],
-            'name': f"{row['tender_number']}.pdf",
+            'name': filename,
             'source': 'Госзакупки',
             'status': row['status'] or 'Новая',
             'confidence': '-',
             'comment': row['customer_name'] or '',
-            'parse_prompt': 'Промпт хранится в r_luxai.tenders.prompt',
-            'application_file': '/static/webui/files/application_form.pdf',
+            'city': row.get('city') or 'Не указан',
+            'parse_prompt': row.get('prompt') or 'Промпт не задан',
+            'application_file': document_file_url(row['id']),
         })
 
     return files
@@ -71,6 +119,27 @@ def fetch_equipment():
     return equipment
 
 
+# def fetch_available_cities():
+#     query = """
+#         SELECT DISTINCT city
+#         FROM r_luxai.processing_queue
+#         WHERE city IS NOT NULL
+#           AND city <> ''
+#           AND city <> 'Не указан'
+#         ORDER BY city;
+#     """
+
+#     with get_connection() as conn:
+#         with conn.cursor() as cur:
+#             cur.execute(query)
+#             rows = cur.fetchall()
+
+#     return [row['city'] for row in rows]
+
+def fetch_available_cities():
+    return list(RUSSIAN_CITIES)
+
+
 def fetch_applications(filters=None):
     filters = filters or {}
 
@@ -82,9 +151,11 @@ def fetch_applications(filters=None):
             t.closing_date,
             t.total_budget,
             t.status,
+            pq.city,
             COUNT(tp.id) AS positions_count
         FROM r_luxai.tenders t
         LEFT JOIN r_luxai.tender_positions tp ON tp.tender_id = t.id
+        LEFT JOIN r_luxai.processing_queue pq ON pq.tender_number = t.tender_number
         WHERE 1 = 1
     """
 
@@ -95,6 +166,7 @@ def fetch_applications(filters=None):
     status = filters.get('status')
     price_from = filters.get('price_from')
     price_to = filters.get('price_to')
+    city = filters.get('city')
 
     if date_from:
         query += " AND t.closing_date >= %s"
@@ -116,6 +188,14 @@ def fetch_applications(filters=None):
         query += " AND t.total_budget <= %s"
         params.append(price_to)
 
+    # if city:
+    #     query += " AND pq.city = %s"
+    #     params.append(city)
+
+    if city:
+        query += " AND pq.city ILIKE %s"
+        params.append(f"%{city}%")
+
     query += """
         GROUP BY
             t.id,
@@ -124,7 +204,8 @@ def fetch_applications(filters=None):
             t.closing_date,
             t.total_budget,
             t.status,
-            t.createdate
+            t.createdate,
+            pq.city
         ORDER BY t.createdate DESC;
     """
 
@@ -141,10 +222,11 @@ def fetch_applications(filters=None):
             'title': f"Тендер {row['tender_number']}",
             'number': row['tender_number'],
             'customer': row['customer_name'] or 'Не указан',
+            'city': row.get('city') or 'Не указан',
             'deadline': format_date(row['closing_date']),
             'price': format_money(row['total_budget']),
             'status': row['status'] or 'Новая',
-            'file': '/static/webui/files/application_form.pdf',
+            'file': application_file_url(row['id']),
             'items': [None] * int(row['positions_count'] or 0),
         })
 
@@ -154,15 +236,17 @@ def fetch_applications(filters=None):
 def fetch_application_detail(application_id):
     tender_query = """
         SELECT
-            id,
-            tender_number,
-            customer_name,
-            closing_date,
-            total_budget,
-            status,
-            prompt
-        FROM r_luxai.tenders
-        WHERE id = %s;
+            t.id,
+            t.tender_number,
+            t.customer_name,
+            t.closing_date,
+            t.total_budget,
+            t.status,
+            t.prompt,
+            pq.city
+        FROM r_luxai.tenders t
+        LEFT JOIN r_luxai.processing_queue pq ON pq.tender_number = t.tender_number
+        WHERE t.id = %s;
     """
 
     positions_query = """
@@ -218,11 +302,12 @@ def fetch_application_detail(application_id):
         'title': f"Тендер {tender['tender_number']}",
         'number': tender['tender_number'],
         'customer': tender['customer_name'] or 'Не указан',
+        'city': tender.get('city') or 'Не указан',
         'deadline': format_date(tender['closing_date']),
         'price': format_money(tender['total_budget']),
         'status': tender['status'] or 'Новая',
         'prompt': tender.get('prompt') or '',
-        'file': '/static/webui/files/application_form.pdf',
+        'file': application_file_url(tender['id']),
         'items': [],
     }
 
@@ -261,6 +346,50 @@ def fetch_application_detail(application_id):
         application['items'].append(item)
 
     return application
+
+
+def fetch_document_file(document_id):
+    query = f"""
+        SELECT
+            d.id,
+            d.tender_id,
+            d.document,
+            {document_metadata_select('d')},
+            t.tender_number
+        FROM r_luxai.documents d
+        JOIN r_luxai.tenders t ON t.id = d.tender_id
+        WHERE d.id = %s;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, [document_id])
+            return cur.fetchone()
+
+
+def fetch_application_file(application_id):
+    query = f"""
+        SELECT
+            t.id AS tender_id,
+            t.tender_number,
+            d.id AS document_id,
+            d.document,
+            {document_metadata_select('d')}
+        FROM r_luxai.tenders t
+        LEFT JOIN LATERAL (
+            SELECT *
+            FROM r_luxai.documents
+            WHERE tender_id = t.id
+            ORDER BY createdate DESC NULLS LAST, id DESC
+            LIMIT 1
+        ) d ON TRUE
+        WHERE t.id = %s;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, [application_id])
+            return cur.fetchone()
 
 
 def fetch_shops_for_position(position):

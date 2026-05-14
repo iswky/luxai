@@ -78,6 +78,22 @@
     </div>
 
     <div class="filter-field">
+        <label>Город</label>
+        <select name="city">
+            <option value="">Все города</option>
+
+            {% for city in cities %}
+                <option
+                    value="{{ city }}"
+                    {% if filters.city == city %}selected{% endif %}
+                >
+                    {{ city }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="filter-field">
         <label>Цена от</label>
         <input
             type="number"
@@ -128,6 +144,11 @@
                 <div class="meta-item">
                     <span>Заказчик</span>
                     <strong>{{ application.customer }}</strong>
+                </div>
+
+                <div class="meta-item">
+                    <span>Город</span>
+                    <strong>{{ application.city }}</strong>
                 </div>
 
                 <div class="meta-item">
