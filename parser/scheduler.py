@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 # path to .env file in the root directory (mapped via docker volume)
 ENV_PATH = "/app/.env"
 
+# description: function run_parser. args: . returns: any.
 def run_parser():
     print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Starting parser...")
     try:
@@ -20,12 +21,14 @@ def run_parser():
     except Exception as e:
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] An error occurred: {e}")
 
+# description: function get_interval. args: . returns: any.
 def get_interval():
     # reload .env from disk
     if os.path.exists(ENV_PATH):
         load_dotenv(ENV_PATH, override=True)
     return int(os.getenv("PARSER_INTERVAL_SECONDS", "3600"))
 
+# description: function main. args: . returns: any.
 def main():
     current_interval = get_interval()
     print(f"Scheduler started. Initial interval: {current_interval} seconds.")

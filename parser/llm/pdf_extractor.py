@@ -149,6 +149,7 @@ class PDFExtractor:
             
         return chunks
 
+# description: function blocks_to_markdown. args: self, blocks. returns: str.
     def blocks_to_markdown(self, blocks: List[ContentBlock]) -> str:
         md = []
         for b in blocks:
@@ -156,6 +157,7 @@ class PDFExtractor:
                 md.append(f"\n[Таблица, стр {b.page}]:\n{self._table_to_markdown(b.content)}")
         return "\n".join(md)
 
+# description: function _table_to_markdown. args: self, table. returns: str.
     def _table_to_markdown(self, table: List[List[str]]) -> str:
         if not table: return ""
         processed_table = []

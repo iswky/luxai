@@ -3,6 +3,7 @@ from .db import get_connection
 from .cities import RUSSIAN_CITIES
 
 
+# description: function db_column_exists. args: table_name, column_name, schema_name. returns: any.
 def db_column_exists(table_name, column_name, schema_name='r_luxai'):
     """Check DB columns so old dumps keep working before migration."""
     query = """
@@ -23,10 +24,12 @@ def db_column_exists(table_name, column_name, schema_name='r_luxai'):
         return False
 
 
+# description: function documents_have_file_metadata. args: . returns: any.
 def documents_have_file_metadata():
     return db_column_exists('documents', 'document_path')
 
 
+# description: function document_metadata_select. args: alias. returns: any.
 def document_metadata_select(alias='d'):
     if documents_have_file_metadata():
         return f'{alias}.document_path, {alias}.filename'
@@ -34,14 +37,17 @@ def document_metadata_select(alias='d'):
     return 'NULL::text AS document_path, NULL::text AS filename'
 
 
+# description: function application_file_url. args: application_id. returns: any.
 def application_file_url(application_id):
     return f'/applications/{application_id}/file/'
 
 
+# description: function document_file_url. args: document_id. returns: any.
 def document_file_url(document_id):
     return f'/files/{document_id}/open/'
 
 
+# description: function fetch_files. args: . returns: any.
 def fetch_files():
     query = f"""
         SELECT
@@ -85,6 +91,7 @@ def fetch_files():
     return files
 
 
+# description: function fetch_equipment. args: . returns: any.
 def fetch_equipment():
     query = """
         SELECT
@@ -136,10 +143,12 @@ def fetch_equipment():
 
 #     return [row['city'] for row in rows]
 
+# description: function fetch_available_cities. args: . returns: any.
 def fetch_available_cities():
     return list(RUSSIAN_CITIES)
 
 
+# description: function fetch_applications. args: filters. returns: any.
 def fetch_applications(filters=None):
     filters = filters or {}
 
@@ -233,6 +242,7 @@ def fetch_applications(filters=None):
     return applications
 
 
+# description: function fetch_application_detail. args: application_id. returns: any.
 def fetch_application_detail(application_id):
     tender_query = """
         SELECT
@@ -348,6 +358,7 @@ def fetch_application_detail(application_id):
     return application
 
 
+# description: function fetch_document_file. args: document_id. returns: any.
 def fetch_document_file(document_id):
     query = f"""
         SELECT
@@ -367,6 +378,7 @@ def fetch_document_file(document_id):
             return cur.fetchone()
 
 
+# description: function fetch_application_file. args: application_id. returns: any.
 def fetch_application_file(application_id):
     query = f"""
         SELECT
@@ -392,6 +404,7 @@ def fetch_application_file(application_id):
             return cur.fetchone()
 
 
+# description: function fetch_shops_for_position. args: position. returns: any.
 def fetch_shops_for_position(position):
     query = """
         SELECT
@@ -441,6 +454,7 @@ def fetch_shops_for_position(position):
     return shops
 
 
+# description: function fetch_selected_items. args: application, selected_shops_ids. returns: any.
 def fetch_selected_items(application, selected_shops_ids):
     selected_items = []
 
@@ -464,6 +478,7 @@ def fetch_selected_items(application, selected_shops_ids):
     return selected_items
 
 
+# description: function normalize_components. args: components. returns: any.
 def normalize_components(components):
     if not components:
         return []
@@ -485,6 +500,7 @@ def normalize_components(components):
     return result
 
 
+# description: function normalize_key_requirements. args: requirements. returns: any.
 def normalize_key_requirements(requirements):
     if not requirements:
         return []
@@ -624,6 +640,7 @@ def normalize_key_requirements(requirements):
     return normalized[:10]
 
 
+# description: function format_requirement_value. args: value, unit. returns: any.
 def format_requirement_value(value, unit=None):
     if value is True:
         return 'Да'
@@ -645,6 +662,7 @@ def format_requirement_value(value, unit=None):
     return value
 
 
+# description: function humanize_range. args: value. returns: any.
 def humanize_range(value):
     clean = value
 
@@ -663,6 +681,7 @@ def humanize_range(value):
     return clean
 
 
+# description: function add_unit. args: value, unit. returns: any.
 def add_unit(value, unit):
     if not value:
         return value
@@ -673,6 +692,7 @@ def add_unit(value, unit):
     return f'{value} {unit}'
 
 
+# description: function format_quantity. args: value. returns: any.
 def format_quantity(value):
     if value is None:
         return '-'
@@ -680,6 +700,7 @@ def format_quantity(value):
     return str(value)
 
 
+# description: function format_money. args: value. returns: any.
 def format_money(value):
     if value is None:
         return '-'
@@ -691,6 +712,7 @@ def format_money(value):
         return str(value)
 
 
+# description: function format_date. args: value. returns: any.
 def format_date(value):
     if value is None:
         return '-'
