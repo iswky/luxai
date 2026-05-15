@@ -4,8 +4,6 @@ from datetime import datetime
 import traceback
 import requests
 import time
-import csv
-import os
 import re
 
 from database.db import get_existing_queue_numbers, add_to_processing_queue, ensure_processing_queue_table
@@ -208,7 +206,9 @@ class TenderParser:
                     'end_date': end_date,
                     'customer': customer,
                     'first_seen': current_date,
-                    'files_downloaded': False
+                    'files_downloaded': False,
+                    'files_filtered': False,
+                    'files_parsed': False
                 }
                 
                 # we note whether it is already in the database
@@ -264,9 +264,11 @@ class TenderParser:
                 print("Last page")
                 break
             
+            break
+
             page += 1
             time.sleep(1)  # pause between requests
-        
+
         print(f"\n TOTAL NEW TENDERS ADDED: {total_new}")
         print(f"Total in database: {len(self.existing_numbers)}")
         

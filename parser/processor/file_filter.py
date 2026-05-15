@@ -417,6 +417,7 @@ def filter_single_tender_files(tender: dict):
     destination_folder = "backend/webui/static/webui/files"
     move_all_files(source_folder, destination_folder)
 
+    tender['files_filtered'] = True
     update_processing_queue_field(full_tender_num, 'files_filtered', True)
     print(f"Marked {full_tender_num} as filtered")
 
@@ -440,6 +441,7 @@ def parse_single_tender_files(tender: dict):
     # pass the full tender number and customer name to the database saving function
     import_pdf_files_from_folder_to_database(folder_path, tender_number=str(full_tender_num), customer_name=customer_name)
 
+    tender['files_parsed'] = True
     update_processing_queue_field(full_tender_num, 'files_parsed', True)
     print(f"Marked {full_tender_num} as parsed and completed")
 
