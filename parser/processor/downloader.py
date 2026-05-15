@@ -24,7 +24,8 @@ def unarchive_file(file_path: str):
     from unzipall import extract
     from unzipall.exceptions import ArchiveExtractionError
 
-    
+    print(f"Unarchive file {file_path}")
+
     # checking file existence
     if not os.path.exists(file_path):
         print(f"File not found: {file_path}")
@@ -73,30 +74,45 @@ def unarchive_file(file_path: str):
         moved_count = 0
         error_count = 0
         
-        for item in os.listdir(source_folder):
-            source_path = os.path.join(source_folder, item)
-            destination_path = os.path.join(destination_folder, item)
+        # we go through files and folders recursively (but recursi in cicle)
+        for root, dirs, files in os.walk(source_folder):
+            # defining relative path of source_folder
+            rel_path = os.path.relpath(root, source_folder)
             
-            try:
-                # if there is already such a file/folder in the destination folder
+            for file in files:
+                source_path = os.path.join(root, file)
+                
+                # move to destination_folder
+                destination_path = os.path.join(destination_folder, file)
+                
+                # if file with this name also exist
                 if os.path.exists(destination_path):
-                    # generating a unique name
-                    base, ext = os.path.splitext(item)
+                    base, ext = os.path.splitext(file)
                     counter = 1
                     while os.path.exists(destination_path):
                         new_name = f"{base}_{counter}{ext}"
                         destination_path = os.path.join(destination_folder, new_name)
                         counter += 1
-                    print(f"Renamed: {item} -> {os.path.basename(destination_path)}")
-                
-                # moving
-                shutil.move(source_path, destination_path)
-                moved_count += 1
-                
-            except Exception as e:
-                print(f"Error moving {item}: {e}")
-                error_count += 1
-                continue
+                    print(f"Renamed: {file} -> {os.path.basename(destination_path)} (from {rel_path if rel_path != '.' else 'root'})")
+
+                # move file
+                try:
+                    shutil.move(source_path, destination_path)
+                    moved_count += 1
+                except Exception as e:
+                    print(f"Error moving {file} from {rel_path}: {e}")
+                    error_count += 1
+        
+        # deleting all empty folders after moving
+        for root, dirs, files in os.walk(source_folder, topdown=False):
+            for dir_name in dirs:
+                dir_path = os.path.join(root, dir_name)
+                try:
+                    os.rmdir(dir_path)  # удаляем только пустые папки
+                    print(f"Deleted empty folder: {dir_path}")
+                except OSError:
+                    # Папка не пуста (возможно, остались какие-то файлы)
+                    pass
         
         # deleting the original folder
         try:
@@ -238,10 +254,6 @@ def extract_file_links_223FZ(url: str, base_url: str = 'https://zakupki.gov.ru')
                 tooltip = link.get('data-tooltip')
                 tooltip_decoded = unescape(tooltip)
                 file_name = BeautifulSoup(tooltip_decoded, 'html.parser').find('span', class_='custom-tooltiptext').text
-
-                print(file_url)
-                print(file_name)
-                print('\n')
                 
                 file_info = {
                     'url': file_url,
@@ -287,6 +299,10 @@ def get_link_to_file_page(tender_link: str, FZ: str) -> str:
         return docs_page_url
 
     return ""
+
+
+
+    
 
 # description: function download_tenders_files. args: . returns: any.
 def download_tenders_files():
@@ -346,8 +362,66 @@ def download_tenders_files():
         except requests.RequestException as e:
             print(f"Error downloading files for {tender_id}: {e}")
 
+def download_1tender_files(tender: dict):
+    full_tender_num = tender['tender_number']
+    tender_id = full_tender_num[2:] if len(full_tender_num) > 2 else full_tender_num
+    tender_link = tender['url']
+    FZ = tender['law']
+    files_downloaded = tender['files_downloaded']
+
+    if is_tender_in_db(full_tender_num):
+        print(f"Tender {full_tender_num} already processed in DB, skipping downloading.")
+        return
+
+    if files_downloaded:
+        print(f"Files for tender {full_tender_num} already downloaded, skipping downloading.")
+        return
+
+    file_page_link = get_link_to_file_page(tender_link, FZ)
+    if not file_page_link:
+        return
+
+    url: str = "https://zakupki.gov.ru" + file_page_link
+    print(url)
+
+    print()
+
+    print(url)
+    print(f"Downloading from site: {url}")
+    print(f"Downloading files for tender: {tender_id}")
+
+    files: List[Dict[str, Optional[str]]] = []
+    if FZ == "44-ФЗ":
+        # getting html
+        try:
+            response = requests.get(url, headers = headers, timeout=15)
+            html_text: str = response.text
+            files = extract_file_links_44FZ(html_text)
+        except Exception as e:
+            print(f"Error fetching 44-FZ links: {e}")
+            return
+    elif FZ == "223-ФЗ":
+        files = extract_file_links_223FZ(url)
+    else:
+        return
+
+    if not files:
+        return
+
+    try:
+        for file_info in files:
+            download_file(file_info['url'], file_info['title'], tender_id)
+
+        tender['files_downloaded'] = True
+        update_processing_queue_field(full_tender_num, 'files_downloaded', True)
+        print(f"Marked {full_tender_num} as downloaded")
+
+    except requests.RequestException as e:
+        print(f"Error downloading files for {tender_id}: {e}")
+    
 
 if __name__ == "__main__":
 
-    print(get_link_to_file_page("https://zakupki.gov.ru/epz/order/notice/ea20/view/common-info.html?regNumber=0320100018726000131", "44-ФЗ"))
-    # download_tenders_files()
+    
+    
+    download_tenders_files()

@@ -1,7 +1,4 @@
-from typing import List, Tuple, Any
-
-
-
+from typing import List
 
 from llm.llm import parse_pdf_to_json
 from database.db import save_tender_to_db
@@ -9,6 +6,8 @@ import os
 import re
 from processor.converter import convert_files_to_pdf
 from processor.file_utils import delete_files, rename_all_files_in_folder
+import shutil
+import hashlib
 
 
 # grabs keywords from a text file.file format: each keyword on a new line.empty lines and lines starting with # are ignored.
@@ -279,6 +278,113 @@ def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: st
     else:
         print(f"Saving tender {tender_number} to DB failed")
 
+def get_file_hash(file_path: str, algorithm: str = "sha256") -> str:
+    """
+        Calculate file hash
+    """
+    hash_func = hashlib.new(algorithm)
+    with open(file_path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            hash_func.update(chunk)
+    return hash_func.hexdigest()
+
+def get_all_hashes_in_folder(folder_path: str, algorithm: str = "sha256") -> set:
+    """
+        Return a set of file hashs in folder
+    """
+    hashes = set()
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            file_path = os.path.join(root, file)
+            try:
+                file_hash = get_file_hash(file_path, algorithm)
+                hashes.add(file_hash)
+            except Exception as e:
+                print(f"Error hashing {file_path}: {e}")
+    return hashes
+
+def move_all_files(source_folder: str, destination_folder: str, algorithm: str = "sha256"):
+    print("\n\n\n")
+    print(f"Move files from {source_folder} to {destination_folder}")
+
+
+    if not os.path.exists(source_folder):
+        print(f"Folders {source_folder} isn`t exists")
+        return
+    
+    if not os.path.isdir(source_folder):
+        print(f"{source_folder} isn`t folders")
+        return
+    
+    if not os.path.exists(destination_folder):
+        os.makedirs(destination_folder)
+
+    # get hashes in dest_folder
+    print(f"Scanning destination folder for existing hashes...")
+    existing_hashes = get_all_hashes_in_folder(destination_folder, algorithm)
+    print(f"Found {len(existing_hashes)} unique file hashes in destination")
+
+    # statistic
+    moved_count = 0
+    skipped_count = 0
+    deleted_count = 0
+    error_count = 0
+
+    # processing every file in source_folder
+    for file in os.listdir(source_folder):
+        source_path = os.path.join(source_folder, file)
+        
+        # skip if isn`t file
+        if not os.path.isfile(source_path):
+            continue
+        
+        try:
+            # calculate file hash
+            file_hash = get_file_hash(source_path, algorithm)
+            
+            # check hash in dest_folder
+            if file_hash in existing_hashes:
+                # duplicate - skip file
+                print(f"File {source_path} has copy in {destination_folder} -> skip this file")
+                os.remove(source_path)
+                deleted_count += 1
+                print(f"Deleted duplicate: {file}")
+            else:
+                # new file - move
+                dest_path = os.path.join(destination_folder, file)
+                
+                # if file has that name - rename
+                if os.path.exists(dest_path):
+                    base, ext = os.path.splitext(file)
+                    counter = 1
+                    while os.path.exists(dest_path):
+                        new_name = f"{base}_{counter}{ext}"
+                        dest_path = os.path.join(destination_folder, new_name)
+                        counter += 1
+                    print(f"Renamed: {file} -> {os.path.basename(dest_path)}")
+                
+                # move file
+                shutil.move(source_path, dest_path)
+                moved_count += 1
+                
+                # add hash to set
+                existing_hashes.add(file_hash)
+                print(f"Moved: {file}")
+                
+        except Exception as e:
+            print(f"Error processing {file}: {e}")
+            error_count += 1
+
+        # Удаляем исходную папку (должна быть пустой)
+    try:
+        if os.path.exists(source_folder):
+            os.rmdir(source_folder)  # удаляем только пустую папку
+            print(f"Removed source folder: {source_folder}")
+    except OSError:
+        print(f"Source folder not empty or could not be removed: {source_folder}")
+    except Exception as e:
+        print(f"Could not remove source folder {source_folder}: {e}")
+
 def filter_single_tender_files(tender: dict):
     """
     Filters and converts raw files in a single tender's folder down to just the relevant PDFs.
@@ -301,15 +407,15 @@ def filter_single_tender_files(tender: dict):
 
     files_with_keywords = find_files_with_keywords(folder_path, files_in_folder)
 
-
-    if (not files_with_keywords):   # if we haven’t found a single file with the words we need, then we convert all the files
-        convert_files_to_pdf(folder_path, files_in_folder)
-    else:   # if we find files with the necessary words, then we convert them and delete all the others
+    if (files_with_keywords):   # if we find files with the necessary words, then we convert them and delete all the others
         convert_files_to_pdf(folder_path, files_with_keywords)
-
-    delete_files(folder_path, files_in_folder)
+        delete_files(folder_path, files_with_keywords)
 
     rename_all_files_in_folder(folder_path, number)
+
+    source_folder = folder_path
+    destination_folder = "backend/webui/static/webui/files"
+    move_all_files(source_folder, destination_folder)
 
     update_processing_queue_field(full_tender_num, 'files_filtered', True)
     print(f"Marked {full_tender_num} as filtered")
@@ -327,7 +433,7 @@ def parse_single_tender_files(tender: dict):
     number = full_tender_num[2:] if len(full_tender_num) > 2 else full_tender_num
     customer_name = tender['customer']
 
-    folder_path: str = os.path.join("./tenders_files", number)
+    folder_path: str = os.path.join("../backend/webui/static/webui/files", number)
     if not os.path.exists(folder_path) or not os.path.isdir(folder_path):
         return
 
@@ -354,7 +460,6 @@ def file_parser():
 
     for tender in tenders:
         parse_single_tender_files(tender)
-
 
 if __name__ == "__main__":
     from database.db import deduplicate_tenders_in_db

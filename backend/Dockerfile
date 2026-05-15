@@ -19,6 +19,8 @@ RUN apt-get update && apt-get install -y \
     libpango-1.0-0 \
     libcairo2 \
     libreoffice \
+    libarchive-dev \
+    libarchive13 \
     && rm -rf /var/lib/apt/lists/*
 
 # context is root

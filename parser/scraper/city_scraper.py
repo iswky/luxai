@@ -5,6 +5,18 @@ import logging
 import time
 import re
 
+from pathlib import Path
+import sys
+
+# Добавляем корневую директорию
+root_dir = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(root_dir))
+try:
+    from backend.webui.cities import RUSSIAN_CITIES
+except ImportError as e:
+    print(f"Import error: {e}")
+RUSSIAN_CITIES_SORTED = sorted(RUSSIAN_CITIES, key=len, reverse=True)
+
 from database.db import get_all_from_processing_queue, update_processing_queue_field
 
 logging.basicConfig(level = logging.INFO, filename = "parse_logs.log", filemode = "w")
@@ -20,28 +32,45 @@ headers = {
 
 # pulls city/town name from address
 def extract_city_from_address(address: str) -> str:
+    """
+    Извлекает название города из адреса.
     
-    # city search patterns
-    patterns = [
-        r'г\.?\s+([А-Яа-я\-]+(?:\s+[А-Яа-я\-]+)?)',  # moscow, moscow
-        r'город\s+([А-Яа-я\-]+(?:\s+[А-Яа-я\-]+)?)',  # moscow city
-        r'пос\.?\s+([А-Яа-я\-]+(?:\s+[А-Яа-я\-]+)?)',  # villagesolar
-        r'д\.?\s+([А-Яа-я\-]+(?:\s+[А-Яа-я\-]+)?)',    # village ivanovka
-        r'деревня\s+([А-Яа-я\-]+(?:\s+[А-Яа-я\-]+)?)', # ivanovka village
-    ]
+    Args:
+        address: Строка с адресом
     
-    for pattern in patterns:
-        match = re.search(pattern, address, re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
+   Returns:
+        Название города или "Не указан", если город не найден
+    """
+    if not address or not isinstance(address, str):
+        return "Не указан"
     
-    # if there are no markers, take the second element by commas
-    parts = [p.strip() for p in address.split(',')]
-    if len(parts) >= 2:
-        # skip index (first element)
-        return parts[1]
+    address_lower = address.lower()
     
-    return parts[0] if parts else address
+    # Перебираем города от самых длинных к коротким
+    # Это нужно, чтобы найти "Ростов-на-Дону", а не просто "Ростов"
+    for city in RUSSIAN_CITIES_SORTED:
+        city_lower = city.lower()
+        
+        # Ищем город как отдельное слово в адресе
+        # Используем простой поиск подстроки с проверкой границ слов
+        if city_lower in address_lower:
+            # Проверяем, что это не часть другого слова
+            start_idx = address_lower.find(city_lower)
+            end_idx = start_idx + len(city_lower)
+            
+            # Проверяем границы слова
+            is_word_boundary = True
+            
+            if start_idx > 0 and address_lower[start_idx - 1].isalpha():
+                is_word_boundary = False
+            if end_idx < len(address_lower) and address_lower[end_idx].isalpha():
+                is_word_boundary = False
+            
+            if is_word_boundary:
+                return city
+    
+    return "Не указан"
+    
 
 # description: function extract_city. args: html_content. returns: str.
 def extract_city(html_content: str) -> str:
@@ -70,14 +99,42 @@ def extract_city(html_content: str) -> str:
             return "Не указан"
 
         place_of_dispatch: str = span_dispatch.get_text(strip = True)
-        # print(place_of_dispatch)
             
         city: str = extract_city_from_address(place_of_dispatch)
-        # print(city)
 
         return city
 
     return "Не указан"
+
+def tender_city_parse(tender: dict):
+    try:
+        full_tender_num = str(tender['tender_number'])
+        url = "https://zakupki.gov.ru" + tender['url']
+
+        # originally the xlsx parsing took substring [2:] of the tender_number
+        # tender_number in db is stored with a 2-character prefix (see original code reading from cell value)
+        tender_num = full_tender_num[2:] if len(full_tender_num) > 2 else full_tender_num
+        city: str = tender['city']
+
+        # skip if city is already parsed
+        if city and city != 'Не указан':
+            return
+
+        try:
+            response = requests.get(url, headers = headers, timeout=15)
+            html_text: str = response.text
+            new_city = extract_city(html_text)
+
+            update_processing_queue_field(full_tender_num, 'city', new_city)
+            print(f"Updated city for {full_tender_num}: {new_city}")
+
+            time.sleep(1)
+        except Exception as req_err:
+            print(f"Error fetching city for {full_tender_num}: {req_err}")
+
+    except Exception as e:
+        print(f"Error in tender_city_parse: {e}")
+
 
 # description: function city_parse. args: . returns: any.
 def city_parse():
@@ -86,6 +143,7 @@ def city_parse():
 
         for tender in tenders:
             full_tender_num = tender['tender_number']
+            url = tender['url']
             # originally the xlsx parsing took substring [2:] of the tender_number
             # tender_number in db is stored with a 2-character prefix (see original code reading from cell value)
             tender_num = full_tender_num[2:] if len(full_tender_num) > 2 else full_tender_num
@@ -94,8 +152,6 @@ def city_parse():
             # skip if city is already parsed
             if city and city != 'Не указан':
                 continue
-
-            url = 'https://zakupki.gov.ru/epz/order/notice/ea20/view/common-info.html?regNumber=' + tender_num
 
             try:
                 response = requests.get(url, headers = headers, timeout=15)

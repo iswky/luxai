@@ -1,4 +1,4 @@
-from typing import Dict, Set, Optional, Any
+from typing import Dict, Set, List, Tuple
 from bs4 import BeautifulSoup
 from datetime import datetime
 import traceback
@@ -73,24 +73,26 @@ class TenderParser:
             return set()
     
     # stashes new tenders in db (only those that don't exist yet)
-    def save_tenders(self, new_tenders):
+    def save_tenders(self, new_tenders) -> Tuple[int, List[dict]]:
         if not new_tenders:
             return 0
         
         # we filter only new tenders
-        truly_new = {}
+        truly_new: List[dict] = []
+        truly_new_dict = {}
         for number, info in new_tenders.items():
             if number not in self.existing_numbers:
-                truly_new[number] = info
+                truly_new.append(info)
+                truly_new_dict[number] = info
                 self.existing_numbers.add(number)  # add to cache
         
         if not truly_new:
             print(f"No new tenders to save")
-            return 0
+            return 0, truly_new
         
-        added_count = add_to_processing_queue(truly_new)
+        added_count = add_to_processing_queue(truly_new_dict)
         print(f"Added {added_count} tenders to database")
-        return added_count
+        return added_count, truly_new
     
     # chews through the page
     def parse_page(self, page_number: int = 1):
@@ -132,6 +134,7 @@ class TenderParser:
                 
                 number = link.text.strip()
                 url = link.get('href')
+                print(f"{number}")
                 
                 # name
                 name_div = block.find('div', class_='registry-entry__body-value')
@@ -197,18 +200,20 @@ class TenderParser:
                                 break
                 
                 tenders[number] = {
+                    'tender_number': number,
                     'name': name,
                     'url': url,
                     'price': price,
                     'law': law,
                     'end_date': end_date,
                     'customer': customer,
-                    'first_seen': current_date
+                    'first_seen': current_date,
+                    'files_downloaded': False
                 }
                 
                 # we note whether it is already in the database
                 status = "New" if number not in self.existing_numbers else "Exists"
-                print(f"{status} {number} | {law} | {price} rub.")
+                print(f"{status} {number} | {law} | {end_date} | {price} rub. | {customer}")
                 
             except Exception as e:
                 print(f"Block parsing error: {e}")
@@ -246,14 +251,14 @@ class TenderParser:
                 break
             
             # we save only new tenders from this page
-            new_on_page = self.save_tenders(page_tenders)
+            new_on_page, truly_new = self.save_tenders(page_tenders)
             total_new += new_on_page
             
             print(f"On page: new {new_on_page}, total added {total_new}")
             
             if page_callback:
                 print("Running callback for processed page")
-                page_callback()
+                page_callback(truly_new)
 
             if not self.has_next_page(soup):
                 print("Last page")
