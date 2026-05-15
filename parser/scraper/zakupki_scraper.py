@@ -8,7 +8,7 @@ import csv
 import os
 import re
 
-from db import get_existing_queue_numbers, add_to_processing_queue, ensure_processing_queue_table
+from database.db import get_existing_queue_numbers, add_to_processing_queue, ensure_processing_queue_table
 
 # tender parser with extended data
 class TenderParser:
@@ -18,6 +18,7 @@ class TenderParser:
     base_params: Dict[str, str]
     existing_numbers: Set[str]
 
+# description: function __init__. args: self. returns: any.
     def __init__(self):
         ensure_processing_queue_table()
         self.headers = {
@@ -266,6 +267,7 @@ class TenderParser:
         
         return total_new
 
+# description: function Parse_gos_zakupki. args: interactive, page_callback. returns: any.
 def Parse_gos_zakupki(interactive=True, page_callback=None):
     parser = TenderParser()
 

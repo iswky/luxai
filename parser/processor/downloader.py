@@ -5,7 +5,7 @@ from typing import List, Dict, Optional, Tuple, Any
 import requests
 import os
 
-from db import get_all_from_processing_queue, update_processing_queue_field, is_tender_in_db
+from database.db import get_all_from_processing_queue, update_processing_queue_field, is_tender_in_db
 
 headers = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -118,6 +118,7 @@ def unarchive_file(file_path: str):
         print(f"Error processing unpacked files: {e}")
         return False
 
+# description: function download_file. args: url, filename, tender_number. returns: any.
 def download_file(url: str, filename: str = "file.html", tender_number: str = "unknown_tender/"):
     headers = {
         'User-Agent': 'Mozilla/5.0'
@@ -148,6 +149,7 @@ def download_file(url: str, filename: str = "file.html", tender_number: str = "u
         print(f"Error downloading {filename}: {e}")
         raise
 
+# description: function extract_file_links_44FZ. args: html_content, base_url. returns: List.
 def extract_file_links_44FZ(html_content: str, base_url: str = 'https://zakupki.gov.ru') -> List[Dict[str, Optional[str]]]:
     
     soup: BeautifulSoup = BeautifulSoup(html_content, 'html.parser')
@@ -183,6 +185,7 @@ def extract_file_links_44FZ(html_content: str, base_url: str = 'https://zakupki.
 
     return files
 
+# description: function extract_file_links_223FZ. args: url, base_url. returns: List.
 def extract_file_links_223FZ(url: str, base_url: str = 'https://zakupki.gov.ru') -> List[Dict[str, Optional[str]]]:
 
     from playwright.sync_api import sync_playwright
@@ -255,6 +258,7 @@ def extract_file_links_223FZ(url: str, base_url: str = 'https://zakupki.gov.ru')
         print(f"Error loading {url}: {e}")
         return []
 
+# description: function get_link_to_file_page. args: tender_link, FZ. returns: str.
 def get_link_to_file_page(tender_link: str, FZ: str) -> str:
 
     response = requests.get(tender_link, headers = headers)
@@ -284,6 +288,7 @@ def get_link_to_file_page(tender_link: str, FZ: str) -> str:
 
     return ""
 
+# description: function download_tenders_files. args: . returns: any.
 def download_tenders_files():
     tenders = get_all_from_processing_queue()
 

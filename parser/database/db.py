@@ -94,6 +94,7 @@ def _find_typed_columns(item: Dict[str, Any]) -> Dict[str, Any]:
     return columns
 
 
+# description: function _to_int. args: value, default. returns: int.
 def _to_int(value: Any, default: int = 1) -> int:
     try:
         return int(value)
@@ -253,6 +254,7 @@ def is_tender_in_db(tender_number: str) -> bool:
         logger.error(f"PostgreSQL error checking if tender {tender_number} exists: {e}")
         return False
 
+# description: function delete_tender_from_db. args: tender_number. returns: bool.
 def delete_tender_from_db(tender_number: str) -> bool:
     try:
         with psycopg2.connect(**DB_CONFIG) as conn:
