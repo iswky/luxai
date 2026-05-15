@@ -263,8 +263,6 @@ class TenderParser:
             if not self.has_next_page(soup):
                 print("Last page")
                 break
-            
-            break
 
             page += 1
             time.sleep(1)  # pause between requests

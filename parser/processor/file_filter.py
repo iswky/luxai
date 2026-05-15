@@ -224,7 +224,7 @@ def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: st
 
     files_in_folder = [
         f for f in os.listdir(folder_path)
-        if os.path.isfile(os.path.join(folder_path, f))
+        if os.path.isfile(os.path.join(folder_path, f)) and tender_number + '_' in f
     ]
 
     # we accumulate items from all pdfs of this tender in order to record them with one upsert
@@ -407,17 +407,20 @@ def filter_single_tender_files(tender: dict):
 
     files_with_keywords = find_files_with_keywords(folder_path, files_in_folder)
 
-    if (files_with_keywords):   # if we find files with the necessary words, then we convert them and delete all the others
+    if files_with_keywords:   # if we find files with the necessary words, then we convert them and delete all the others
         convert_files_to_pdf(folder_path, files_with_keywords)
         delete_files(folder_path, files_with_keywords)
+        print(f"Files for tender {tender['tender_number']} filtered successfull")
+    else:
+        tender['files_parsed'] = 'Unparsed'
 
     rename_all_files_in_folder(folder_path, number)
+    tender['files_filtered'] = True
 
     source_folder = folder_path
     destination_folder = "backend/webui/static/webui/files"
     move_all_files(source_folder, destination_folder)
-
-    tender['files_filtered'] = True
+    
     update_processing_queue_field(full_tender_num, 'files_filtered', True)
     print(f"Marked {full_tender_num} as filtered")
 
@@ -427,19 +430,22 @@ def parse_single_tender_files(tender: dict):
 
     @param tender Dictionary containing tender data from the processing queue.
     """
-    if not tender.get('files_filtered') or tender.get('files_parsed'):
+
+    if not tender['files_filtered'] or tender['files_parsed'] or tender['files_parsed'] == 'Unparsed':
+        print(f"Tender {tender['tender_number']} doesn`t ready to pars")
         return
 
     full_tender_num = tender['tender_number']
     number = full_tender_num[2:] if len(full_tender_num) > 2 else full_tender_num
     customer_name = tender['customer']
 
-    folder_path: str = os.path.join("../backend/webui/static/webui/files", number)
+    folder_path: str = "backend/webui/static/webui/files"
     if not os.path.exists(folder_path) or not os.path.isdir(folder_path):
+        print(f"{folder_path}: doesn`t exist such directory")
         return
 
     # pass the full tender number and customer name to the database saving function
-    import_pdf_files_from_folder_to_database(folder_path, tender_number=str(full_tender_num), customer_name=customer_name)
+    import_pdf_files_from_folder_to_database(folder_path, tender_number=str(number), customer_name=customer_name)
 
     tender['files_parsed'] = True
     update_processing_queue_field(full_tender_num, 'files_parsed', True)
@@ -453,6 +459,7 @@ def file_filter():
 
     for tender in tenders:
         filter_single_tender_files(tender)
+        print(f"tender {tender['tender_number']} is filtered? {tender['files_filtered']}")
 
 def file_parser():
     """

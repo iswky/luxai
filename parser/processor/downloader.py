@@ -134,6 +134,23 @@ def unarchive_file(file_path: str):
         print(f"Error processing unpacked files: {e}")
         return False
 
+def detect_shit_archive(filename: str) -> bool:
+    if filename.lower().endswith('.xlsx.zip'):
+        return True
+    elif filename.lower().endswith('.rar.zip'):
+        return True
+    elif filename.lower().endswith('.docx.zip'):
+        return True
+    elif filename.lower().endswith('.doc.zip'):
+        return True
+    elif filename.lower().endswith('.pdf.zip'):
+        return True
+    elif filename.lower().endswith('.xml.zip'):
+        return True
+    else: 
+        return False
+        
+
 # description: function download_file. args: url, filename, tender_number. returns: any.
 def download_file(url: str, filename: str = "file.html", tender_number: str = "unknown_tender/"):
     headers = {
@@ -153,7 +170,9 @@ def download_file(url: str, filename: str = "file.html", tender_number: str = "u
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
 
-        if os.path.splitext(filepath)[1].lower() in ['.zip', '.rar', '.7z', '.tar']:
+        if detect_shit_archive(filename):
+            print(f"Unsupported format of archive: {filename}")
+        elif os.path.splitext(filepath)[1].lower() in ['.zip', '.rar', '.7z', '.tar']:
             unarchive_file(filepath)
 
 
