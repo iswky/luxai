@@ -132,7 +132,7 @@ class TenderParser:
                 
                 number = link.text.strip()
                 url = link.get('href')
-                print(f"{number}")
+                print(f"tender {number} url: {url}")
                 
                 # name
                 name_div = block.find('div', class_='registry-entry__body-value')
@@ -203,6 +203,7 @@ class TenderParser:
                     'url': url,
                     'price': price,
                     'law': law,
+                    'city': '',
                     'end_date': end_date,
                     'customer': customer,
                     'first_seen': current_date,

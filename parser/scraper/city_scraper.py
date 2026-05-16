@@ -109,7 +109,7 @@ def extract_city(html_content: str) -> str:
 def tender_city_parse(tender: dict):
     try:
         full_tender_num = str(tender['tender_number'])
-        url = "https://zakupki.gov.ru" + tender['url']
+        url = tender['url']
 
         # originally the xlsx parsing took substring [2:] of the tender_number
         # tender_number in db is stored with a 2-character prefix (see original code reading from cell value)

@@ -1,5 +1,56 @@
-# db.py -------------------- working with postgresql: recording parsed tenders and removing duplicates.the connection params correspond to docker-compose.yml: db: image: postgres:15 environment: postgres_db: appdb postgres_user: user postgres_password: pass ports: - "5432:5432" r_luxai scheme (current): tenders(id, tender_number unique, customer_name, status, prompt, ...) tender_positions(tender_id,product_type, product_name, country, min_release_year, screen_size, min_ports_qty, min_cpu, min_cpu_cores, min_gpu, min_ram_gb, ram_type, min_storage_gb, storage_type, os, min_print_speed_ppm, min_warranty_months, additional_info, components jsonb, numerical_requirements json,string_and_bool_features json, grouped_features json, unparsed_features json, quantity, max_price)
+'''
+db.py 
+-------------------- 
+Working with postgresql: recording parsed tenders and removing duplicates.
 
+The connection params correspond to docker-compose.yml: 
+    db: 
+        image: postgres:15 
+        environment: 
+            postgres_db: appdb 
+            postgres_user: user 
+            postgres_password: pass 
+        ports: 
+            - "5432:5432" 
+            
+r_luxai scheme (current): 
+    tenders(
+        id, 
+        tender_number unique, 
+        customer_name, 
+        status, 
+        prompt, 
+        ...
+    ) 
+    
+    tender_positions(
+        tender_id,
+        product_type, 
+        product_name, 
+        country, 
+        min_release_year, 
+        screen_size, 
+        min_ports_qty, 
+        min_cpu, 
+        min_cpu_cores, 
+        min_gpu, 
+        min_ram_gb, 
+        ram_type, 
+        min_storage_gb, 
+        storage_type, 
+        os, 
+        min_print_speed_ppm, 
+        min_warranty_months, 
+        additional_info, 
+        components jsonb, 
+        numerical_requirements json,
+        string_and_bool_features json, 
+        grouped_features json, 
+        unparsed_features json, 
+        quantity, 
+        max_price
+    )        
+'''
 from typing import Any, Dict, List, Optional, Tuple
 import logging
 import re
@@ -70,7 +121,11 @@ def _extract_number_value(value: Any) -> Optional[float]:
     return None
 
 
-# it runs through numerical_requirements / string_and_bool_features and tries to fit the values ​​into the typed tender_positions columns.spits out dict {colname: value}.
+'''
+it runs through numerical_requirements / string_and_bool_features 
+and tries to fit the values into the typed tender_positions 
+columns.spits out dict {colname: value}.
+'''
 def _find_typed_columns(item: Dict[str, Any]) -> Dict[str, Any]:
     columns: Dict[str, Any] = {}
 
@@ -112,7 +167,11 @@ def _truncate(value: Optional[str], maxlen: int) -> Optional[str]:
 
 # ─────────────────────── public funcs───────────────────────
 
-# stashes the parsed tender in the database.behavior in case of a double (tender_number already exists): - tender update (updatedate = now()) - its old tender_positions are deleted - new positions from parsed_json are inserted all in one transaction.
+'''
+stashes the parsed tender in the database.behavior in case of a 
+double (tender_number already exists): - tender update (updatedate = now()) - 
+its old tender_positions are deleted - new positions from parsed_json are inserted all in one transaction.
+'''
 def save_tender_to_db(
     tender_number: str,
     parsed_json: Dict[str, Any],
@@ -282,8 +341,12 @@ def delete_tender_from_db(tender_number: str) -> bool:
         logger.error(f"PostgreSQL error deleting tender {tender_number}: {e}")
         return False
 
-
-# cleans up duplicates in r_luxai.tenders.there is a unique key (tender_number) on the table, so there should be no strict duplicates.but if for some reason the insertion went earlier without upsert and they appeared, we leave the most recent entry (by createdate / id), we demolish the rest along with their positions.
+'''
+    cleans up duplicates in r_luxai.tenders.there is a unique key (tender_number) 
+    on the table, so there should be no strict duplicates.but if for some reason 
+    the insertion went earlier without upsert and they appeared, we leave the most 
+    recent entry (by createdate / id), we demolish the rest along with their positions.
+'''
 def deduplicate_tenders_in_db() -> int:
     try:
         with psycopg2.connect(**DB_CONFIG) as conn:
