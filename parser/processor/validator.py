@@ -40,7 +40,11 @@ def _wipe_tender_files(tender_number: str) -> None:
         except Exception as e:
             print(f"Failed to delete folder {folder}: {e}")
 
-    folder_with_filtered_files = 'backend/webui/static/webui/files'
+    folder_with_filtered_files = 'backend/webui/s:tatic/webui/files'
+    if os.path.exists(folder_with_filtered_files):
+        print(f"Error: folder {folder_with_filtered_files} doesn`t exists")
+        return
+
     files_in_folder = [
         f for f in os.listdir(folder_with_filtered_files)
         if os.path.isfile(os.path.join(folder_with_filtered_files, f)) and tender_number + '_' in f
