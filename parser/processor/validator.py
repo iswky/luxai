@@ -20,7 +20,7 @@ except ImportError:
         pass
 
 
-TENDERS_FILES_DIR = "./tenders_files"
+TENDERS_FILES_DIR = "parser/tenders_files"
 
 
 # column 1 stores the number with a 2-character prefix (see file_filter.py: ws.cell(...).value[2:]).the tender folder is named without these 2 characters.
@@ -30,6 +30,8 @@ def _tender_number_to_folder(tender_number: str) -> str:
 
 # nukes the folder with tender files (if any).
 def _wipe_tender_files(tender_number: str) -> None:
+
+    # на случай если ранее произошла ошибка и файлы остались в папке parser/tenders_files/tender_num/
     folder = os.path.join(TENDERS_FILES_DIR, _tender_number_to_folder(tender_number))
     if os.path.isdir(folder):
         try:
@@ -37,6 +39,16 @@ def _wipe_tender_files(tender_number: str) -> None:
             print(f"Deleted files folder: {folder}")
         except Exception as e:
             print(f"Failed to delete folder {folder}: {e}")
+
+    folder_with_filtered_files = 'backend/webui/static/webui/files'
+    files_in_folder = [
+        f for f in os.listdir(folder_with_filtered_files)
+        if os.path.isfile(os.path.join(folder_with_filtered_files, f)) and tender_number + '_' in f
+    ]
+
+    for file in files_in_folder:
+        if os.path.exists(os.path.join(folder_with_filtered_files, file)):
+            os.remove(os.path.join(folder_with_filtered_files, file))
 
 # description: function deduplicate_tenders_in_excel. args: . returns: int.
 def deduplicate_tenders_in_excel() -> int:

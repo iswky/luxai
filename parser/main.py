@@ -38,10 +38,10 @@ def process_new_tenders(tenders: List[dict]):
 def main():
     interactive = os.getenv("INTERACTIVE_MODE", "true").lower() == "true"
 
-    # tender_validator()
+    tender_validator()
 
     # # Process the queue initially to clear any backlog
-    # process_queue()
+    process_queue()
 
     # Run the parser and pass the callback to process after each page
     Parse_gos_zakupki(interactive=interactive, page_callback=process_new_tenders)
