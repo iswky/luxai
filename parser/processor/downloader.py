@@ -44,8 +44,7 @@ def unarchive_file(file_path: str):
         # deleting the archive after successful unpacking
         if os.path.exists(file_path):
             os.remove(file_path)
-            print(f"Archive deleted: {file_path}")
-        
+            print(f"Archive deleted: {file_path}")    
     except ArchiveExtractionError as e:
         print(f"Unpack error {file_path}: {e}")
         # don't delete the archive so you can try later
@@ -127,12 +126,24 @@ def unarchive_file(file_path: str):
             except Exception as e:
                 print(f"Could not delete folder {source_folder}: {e}")
         
-        print(f"Moved files: {moved_count}, errors: {error_count}")
-        return True
-        
+        print(f"Moved files: {moved_count}, errors: {error_count}")  
     except Exception as e:
         print(f"Error processing unpacked files: {e}")
         return False
+    
+    source_folder = os.path.splitext(file_path)[0]
+    destination_folder = os.path.dirname(source_folder)
+
+    archives = [
+        f for f in os.listdir(destination_folder)
+        if os.path.isfile(os.path.join(destination_folder, f)) and os.path.splitext(f)[1].lower() in ['.zip', '.rar', '.7z', '.tar']
+    ]
+
+    for archive in archives:
+        unarchive_file(os.path.join(destination_folder, archive))
+
+    return True
+
 
 def detect_shit_archive(filename: str) -> bool:
     if filename.lower().endswith('.xlsx.zip'):
