@@ -227,7 +227,7 @@ def fetch_applications(filters=None):
             t.closing_date,
             t.total_budget,
             t.status,
-            pq.city,
+            pq.city AS city,
             COUNT(tp.id) AS positions_count
         FROM r_luxai.tenders t
         LEFT JOIN r_luxai.tender_positions tp ON tp.tender_id = t.id
@@ -320,7 +320,7 @@ def fetch_application_detail(application_id):
             t.total_budget,
             t.status,
             t.prompt,
-            pq.city
+            pq.city AS city
         FROM r_luxai.tenders t
         LEFT JOIN r_luxai.processing_queue pq ON pq.tender_number = t.tender_number
         WHERE t.id = %s;
