@@ -44,13 +44,24 @@
             </div>
         </div>
 
-        <a
-            href="{{ application.file }}"
-            target="_blank"
-            class="btn-neon btn-neon-primary btn-full"
-        >
-            Открыть PDF заявки
-        </a>
+        {% if application.files %}
+            <button
+                type="button"
+                class="btn-neon btn-neon-primary btn-full application-files-open-btn"
+                data-open-files-modal
+            >
+                Открыть файлы заявки
+            </button>
+        {% else %}
+            <a
+                href="{{ application.file }}"
+                target="_blank"
+                rel="noopener"
+                class="btn-neon btn-neon-primary btn-full"
+            >
+                Открыть файлы заявки
+            </a>
+        {% endif %}
 
         <a
             href="{% url 'contract_page' application.id %}"
@@ -123,9 +134,11 @@
 
                                     <div class="components-grid">
                                         {% for component in item.components %}
-                                            <div class="component-chip">
-                                                {{ component.name }}
-                                            </div>
+                                            {% if component.name %}
+                                                <div class="component-chip">
+                                                    {{ component.name }}
+                                                </div>
+                                            {% endif %}
                                         {% endfor %}
                                     </div>
                                 </div>
@@ -208,4 +221,373 @@
         </div>
     </section>
 </div>
+
+
+{% if application.files %}
+<style>
+    /* Встроено прямо в шаблон, чтобы модальное меню не ломалось из-за кэша static-файлов. */
+    body.file-menu-open {
+        overflow: hidden !important;
+    }
+
+    .file-menu-overlay[hidden] {
+        display: none !important;
+    }
+
+    .file-menu-overlay {
+        position: fixed !important;
+        inset: 0 !important;
+        z-index: 2147483000 !important;
+        display: grid !important;
+        place-items: center !important;
+        padding: 28px !important;
+        background:
+            radial-gradient(circle at 18% 20%, rgba(255, 43, 138, 0.27), transparent 32%),
+            radial-gradient(circle at 82% 80%, rgba(139, 92, 255, 0.30), transparent 34%),
+            rgba(2, 2, 8, 0.82) !important;
+        backdrop-filter: blur(18px) saturate(130%) !important;
+        -webkit-backdrop-filter: blur(18px) saturate(130%) !important;
+    }
+
+    .file-menu-panel {
+        position: relative !important;
+        width: min(760px, 100%) !important;
+        max-height: min(760px, calc(100vh - 56px)) !important;
+        overflow: hidden !important;
+        border-radius: 34px !important;
+        color: #fff !important;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.038)),
+            rgba(24, 24, 38, 0.98) !important;
+        border: 1px solid rgba(255, 255, 255, 0.16) !important;
+        box-shadow:
+            0 36px 120px rgba(0, 0, 0, 0.72),
+            0 0 80px rgba(255, 43, 138, 0.18),
+            inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+        transform: translateY(0) scale(1) !important;
+        animation: fileMenuIn 0.18s ease-out both !important;
+    }
+
+    @keyframes fileMenuIn {
+        from {
+            opacity: 0;
+            transform: translateY(12px) scale(0.985);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+    }
+
+    .file-menu-topline {
+        height: 3px !important;
+        background: linear-gradient(90deg, #ff2b8a, #ff8a1f, #8b5cff) !important;
+    }
+
+    .file-menu-content {
+        padding: 28px !important;
+        overflow: auto !important;
+        max-height: calc(min(760px, 100vh - 56px) - 3px) !important;
+    }
+
+    .file-menu-header {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: flex-start !important;
+        gap: 20px !important;
+        margin-bottom: 22px !important;
+    }
+
+    .file-menu-kicker {
+        width: fit-content !important;
+        margin-bottom: 10px !important;
+        padding: 7px 12px !important;
+        border-radius: 999px !important;
+        color: #ff5ab3 !important;
+        font-size: 12px !important;
+        font-weight: 950 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.08em !important;
+        background: rgba(255, 43, 138, 0.13) !important;
+        border: 1px solid rgba(255, 43, 138, 0.35) !important;
+    }
+
+    .file-menu-title {
+        margin: 0 !important;
+        font-size: clamp(26px, 4vw, 38px) !important;
+        line-height: 0.98 !important;
+        font-weight: 950 !important;
+        letter-spacing: -0.055em !important;
+        color: #fff !important;
+    }
+
+    .file-menu-subtitle {
+        max-width: 560px !important;
+        margin: 12px 0 0 !important;
+        color: rgba(255, 255, 255, 0.68) !important;
+        font-size: 15px !important;
+        line-height: 1.55 !important;
+    }
+
+    .file-menu-close {
+        flex: 0 0 auto !important;
+        width: 46px !important;
+        height: 46px !important;
+        display: grid !important;
+        place-items: center !important;
+        border-radius: 16px !important;
+        border: 1px solid rgba(255, 255, 255, 0.14) !important;
+        color: #fff !important;
+        font-size: 28px !important;
+        font-weight: 900 !important;
+        line-height: 1 !important;
+        cursor: pointer !important;
+        background: rgba(255, 255, 255, 0.08) !important;
+        transition: 0.2s ease !important;
+    }
+
+    .file-menu-close:hover {
+        transform: translateY(-1px) !important;
+        border-color: rgba(255, 43, 138, 0.58) !important;
+        background: rgba(255, 43, 138, 0.18) !important;
+        box-shadow: 0 12px 30px rgba(255, 43, 138, 0.18) !important;
+    }
+
+    .file-menu-list {
+        display: grid !important;
+        gap: 12px !important;
+    }
+
+    .file-menu-item {
+        display: grid !important;
+        grid-template-columns: 52px minmax(0, 1fr) auto !important;
+        align-items: center !important;
+        gap: 16px !important;
+        padding: 16px !important;
+        border-radius: 22px !important;
+        color: #fff !important;
+        text-decoration: none !important;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.035)),
+            rgba(255, 255, 255, 0.045) !important;
+        border: 1px solid rgba(255, 255, 255, 0.115) !important;
+        transition: 0.2s ease !important;
+    }
+
+    .file-menu-item:hover {
+        color: #fff !important;
+        transform: translateY(-2px) !important;
+        border-color: rgba(255, 43, 138, 0.52) !important;
+        background:
+            linear-gradient(180deg, rgba(255, 43, 138, 0.17), rgba(139, 92, 255, 0.09)),
+            rgba(255, 255, 255, 0.065) !important;
+        box-shadow: 0 18px 48px rgba(255, 43, 138, 0.18) !important;
+    }
+
+    .file-menu-icon {
+        width: 52px !important;
+        height: 52px !important;
+        display: grid !important;
+        place-items: center !important;
+        border-radius: 18px !important;
+        font-size: 21px !important;
+        background: linear-gradient(135deg, #ff2b8a, #8b5cff) !important;
+        box-shadow: 0 12px 30px rgba(255, 43, 138, 0.28) !important;
+    }
+
+    .file-menu-file-meta {
+        min-width: 0 !important;
+    }
+
+    .file-menu-file-label {
+        display: block !important;
+        margin-bottom: 4px !important;
+        color: #ff5ab3 !important;
+        font-size: 12px !important;
+        font-weight: 950 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.07em !important;
+    }
+
+    .file-menu-file-name {
+        display: block !important;
+        color: rgba(255, 255, 255, 0.93) !important;
+        font-size: 15px !important;
+        font-weight: 850 !important;
+        line-height: 1.3 !important;
+        overflow-wrap: anywhere !important;
+        word-break: break-word !important;
+    }
+
+    .file-menu-open-chip {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        min-height: 42px !important;
+        padding: 0 18px !important;
+        border-radius: 15px !important;
+        color: #fff !important;
+        font-size: 13px !important;
+        font-style: normal !important;
+        font-weight: 950 !important;
+        white-space: nowrap !important;
+        background: linear-gradient(135deg, #ff2b8a, #ff8a1f) !important;
+        box-shadow: 0 12px 28px rgba(255, 43, 138, 0.28) !important;
+    }
+
+    .file-menu-footer {
+        margin-top: 18px !important;
+        padding: 14px 16px !important;
+        border-radius: 20px !important;
+        color: rgba(255, 255, 255, 0.62) !important;
+        font-size: 13px !important;
+        line-height: 1.45 !important;
+        background: rgba(255, 255, 255, 0.045) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    @media (max-width: 640px) {
+        .file-menu-overlay {
+            padding: 14px !important;
+            place-items: end center !important;
+        }
+
+        .file-menu-panel {
+            width: 100% !important;
+            max-height: calc(100vh - 28px) !important;
+            border-radius: 28px !important;
+        }
+
+        .file-menu-content {
+            padding: 22px !important;
+            max-height: calc(100vh - 31px) !important;
+        }
+
+        .file-menu-header {
+            gap: 12px !important;
+        }
+
+        .file-menu-item {
+            grid-template-columns: 46px minmax(0, 1fr) !important;
+        }
+
+        .file-menu-icon {
+            width: 46px !important;
+            height: 46px !important;
+            border-radius: 16px !important;
+        }
+
+        .file-menu-open-chip {
+            grid-column: 1 / -1 !important;
+            width: 100% !important;
+        }
+    }
+</style>
+
+<div
+    class="file-menu-overlay"
+    id="applicationFilesMenu"
+    hidden
+    aria-hidden="true"
+>
+    <div
+        class="file-menu-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="applicationFilesMenuTitle"
+    >
+        <div class="file-menu-topline"></div>
+
+        <div class="file-menu-content">
+            <div class="file-menu-header">
+                <div>
+                    <div class="file-menu-kicker">Файлы заявки</div>
+                    <h2 class="file-menu-title" id="applicationFilesMenuTitle">
+                        Выбери документ
+                    </h2>
+                    <p class="file-menu-subtitle">
+                        По этому тендеру найдено несколько файлов. Нажми на нужный документ — он откроется в новой вкладке.
+                    </p>
+                </div>
+
+                <button
+                    type="button"
+                    class="file-menu-close"
+                    data-close-files-modal
+                    aria-label="Закрыть меню выбора файла"
+                >
+                    ×
+                </button>
+            </div>
+
+            <div class="file-menu-list">
+                {% for file in application.files %}
+                    <a
+                        href="{{ file.url }}"
+                        target="_blank"
+                        rel="noopener"
+                        class="file-menu-item"
+                    >
+                        <span class="file-menu-icon">📄</span>
+
+                        <span class="file-menu-file-meta">
+                            <span class="file-menu-file-label">Файл {{ forloop.counter }}</span>
+                            <strong class="file-menu-file-name">{{ file.name }}</strong>
+                        </span>
+
+                        <em class="file-menu-open-chip">Открыть</em>
+                    </a>
+                {% endfor %}
+            </div>
+
+            <div class="file-menu-footer">
+                Если файл не открывается, значит он есть в списке БД, но физически не лежит в папке static/webui/files или tenders_files.
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function () {
+        const modal = document.getElementById('applicationFilesMenu');
+        const openButton = document.querySelector('[data-open-files-modal]');
+        const closeButtons = document.querySelectorAll('[data-close-files-modal]');
+
+        if (!modal || !openButton) {
+            return;
+        }
+
+        function openModal() {
+            modal.hidden = false;
+            modal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('file-menu-open');
+        }
+
+        function closeModal() {
+            modal.hidden = true;
+            modal.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('file-menu-open');
+            openButton.focus();
+        }
+
+        openButton.addEventListener('click', openModal);
+
+        closeButtons.forEach(function (button) {
+            button.addEventListener('click', closeModal);
+        });
+
+        modal.addEventListener('click', function (event) {
+            if (event.target === modal) {
+                closeModal();
+            }
+        });
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && !modal.hidden) {
+                closeModal();
+            }
+        });
+    }());
+</script>
+{% endif %}
 {% endblock %}

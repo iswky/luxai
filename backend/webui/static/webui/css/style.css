@@ -1453,3 +1453,325 @@ a {
         width: 100%;
     }
 }
+
+/* Fix: links to several tender files in application sidebar */
+.application-files-list {
+    display: grid;
+    gap: 10px;
+    margin-bottom: 12px;
+}
+
+.application-files-title {
+    color: var(--pink-2);
+    font-size: 12px;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.application-file-btn {
+    min-height: 56px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px;
+    line-height: 1.2;
+    text-align: left;
+}
+
+.application-file-btn small {
+    max-width: 100%;
+    color: rgba(255, 255, 255, 0.78);
+    font-size: 12px;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+/* Fix: long parsed text must stay inside cards */
+.application-sidebar,
+.application-workspace,
+.parsed-item-card,
+.parsed-left,
+.item-main,
+.item-title-row > div,
+.shops-column,
+.requirements-grid,
+.requirement-pill,
+.shop-card,
+.empty-offers,
+.component-chip {
+    min-width: 0;
+}
+
+.application-sidebar h1,
+.sidebar-meta strong,
+.parsed-left h3,
+.item-summary,
+.requirement-pill span,
+.requirement-pill strong,
+.component-chip,
+.empty-offers,
+.shop-card h4,
+.shop-meta span {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.item-summary {
+    white-space: normal;
+}
+
+.requirement-pill span {
+    line-height: 1.25;
+}
+
+/* Popup file selector for application documents */
+.application-files-open-btn {
+    width: 100%;
+}
+
+body.modal-open {
+    overflow: hidden;
+}
+
+.application-files-modal[hidden] {
+    display: none;
+}
+
+.application-files-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+    background:
+        radial-gradient(circle at 30% 20%, rgba(255, 43, 138, 0.18), transparent 34%),
+        radial-gradient(circle at 75% 70%, rgba(139, 92, 255, 0.2), transparent 36%),
+        rgba(4, 4, 10, 0.76);
+    backdrop-filter: blur(16px);
+}
+
+.application-files-modal-card {
+    position: relative;
+    width: min(640px, 100%);
+    max-height: calc(100vh - 48px);
+    overflow: auto;
+    padding: 30px;
+    border-radius: 30px;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.035)),
+        #1d1d2a;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    box-shadow:
+        0 28px 90px rgba(0, 0, 0, 0.58),
+        0 0 70px rgba(255, 43, 138, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.application-files-modal-close {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 42px;
+    height: 42px;
+    border: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 14px;
+    color: #fff;
+    font-size: 26px;
+    font-weight: 800;
+    line-height: 1;
+    cursor: pointer;
+    background: rgba(255, 255, 255, 0.08);
+    transition: 0.2s ease;
+}
+
+.application-files-modal-close:hover {
+    transform: translateY(-1px);
+    border-color: rgba(255, 43, 138, 0.58);
+    background: rgba(255, 43, 138, 0.18);
+}
+
+.application-files-modal-head {
+    padding-right: 52px;
+    margin-bottom: 20px;
+}
+
+.application-files-modal-head h2 {
+    margin: 8px 0 10px;
+    color: #fff;
+    font-size: 30px;
+    line-height: 1.05;
+    font-weight: 950;
+    letter-spacing: -0.045em;
+}
+
+.application-files-modal-head p {
+    margin: 0;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 15px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.application-files-choice-list {
+    display: grid;
+    gap: 12px;
+}
+
+.application-files-choice {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    padding: 16px;
+    border-radius: 20px;
+    color: #fff;
+    text-decoration: none;
+    background: rgba(255, 255, 255, 0.065);
+    border: 1px solid rgba(255, 255, 255, 0.11);
+    transition: 0.2s ease;
+}
+
+.application-files-choice:hover {
+    color: #fff;
+    transform: translateY(-2px);
+    border-color: rgba(255, 43, 138, 0.5);
+    background: rgba(255, 43, 138, 0.12);
+    box-shadow: 0 16px 46px rgba(255, 43, 138, 0.17);
+}
+
+.application-files-choice span {
+    display: inline-flex;
+    min-width: 74px;
+    min-height: 36px;
+    align-items: center;
+    justify-content: center;
+    padding: 0 12px;
+    border-radius: 999px;
+    color: var(--pink-2);
+    font-size: 12px;
+    font-weight: 950;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: rgba(255, 43, 138, 0.12);
+    border: 1px solid rgba(255, 43, 138, 0.26);
+}
+
+.application-files-choice strong {
+    min-width: 0;
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 14px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.application-files-choice em {
+    padding: 10px 13px;
+    border-radius: 13px;
+    color: #fff;
+    font-size: 13px;
+    font-style: normal;
+    font-weight: 950;
+    background: linear-gradient(135deg, var(--pink), var(--orange));
+    box-shadow: 0 10px 24px rgba(255, 43, 138, 0.28);
+}
+
+@media (max-width: 640px) {
+    .application-files-modal {
+        padding: 14px;
+        align-items: flex-end;
+    }
+
+    .application-files-modal-card {
+        padding: 24px;
+        border-radius: 24px;
+    }
+
+    .application-files-modal-head h2 {
+        font-size: 24px;
+    }
+
+    .application-files-choice {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .application-files-choice span,
+    .application-files-choice em {
+        width: fit-content;
+    }
+}
+
+/* =========================================================
+   FIX: перенос длинных заголовков внутри карточек характеристик
+   ========================================================= */
+
+.requirements-grid {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+}
+
+.requirement-pill {
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+}
+
+/* Заголовок характеристики: МАТЕРИАЛ_ДОСКИ_ДЛЯ_ЛЕПКИ и т.п. */
+.requirement-pill span {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+
+    line-height: 1.25 !important;
+    overflow: hidden !important;
+}
+
+/* Значение характеристики */
+.requirement-pill strong {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+
+    line-height: 1.35 !important;
+    overflow: hidden !important;
+}
+
+/* Заголовок товара тоже переносится, если он длинный */
+.item-main h3,
+.parsed-left h3 {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+
+    line-height: 1.15 !important;
+    overflow: hidden !important;
+}
+
+/* Чтобы блок с названием товара не сжимался криво */
+.item-title-row,
+.item-title-row > div,
+.item-main,
+.parsed-left,
+.parsed-left-clean {
+    min-width: 0 !important;
+    max-width: 100% !important;
+}

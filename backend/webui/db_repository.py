@@ -47,6 +47,47 @@ def document_file_url(document_id):
     return f'/files/{document_id}/open/'
 
 
+def json_object(value):
+    if isinstance(value, dict):
+        return value
+
+    return {}
+
+
+def json_list(value):
+    if isinstance(value, list):
+        return value
+
+    if isinstance(value, dict):
+        return [value]
+
+    if value:
+        return [value]
+
+    return []
+
+
+def unparsed_description(value):
+    if isinstance(value, dict):
+        notes = value.get('notes')
+
+        if isinstance(notes, list):
+            return '; '.join(str(item) for item in notes if item)
+
+        if isinstance(notes, str):
+            return notes
+
+        return value.get('description') or value.get('text') or ''
+
+    if isinstance(value, list):
+        return '; '.join(str(item) for item in value if item)
+
+    if isinstance(value, str):
+        return value
+
+    return ''
+
+
 # description: function fetch_files. args: . returns: any.
 def fetch_files():
     query = f"""
@@ -322,11 +363,13 @@ def fetch_application_detail(application_id):
     }
 
     for index, position in enumerate(positions, start=1):
-        unparsed = position.get('unparsed_features') or {}
-        numerical = position.get('numerical_requirements') or {}
-        string_bool = position.get('string_and_bool_features') or {}
-        grouped = position.get('grouped_features') or {}
-        components = position.get('components') or []
+        unparsed_raw = position.get('unparsed_features')
+
+        unparsed = json_object(unparsed_raw)
+        numerical = json_object(position.get('numerical_requirements'))
+        string_bool = json_object(position.get('string_and_bool_features'))
+        grouped = json_object(position.get('grouped_features'))
+        components = json_list(position.get('components'))
 
         merged_requirements = {}
         merged_requirements.update(string_bool)
@@ -343,10 +386,15 @@ def fetch_application_detail(application_id):
                 or 'Позиция без названия'
             ),
             'product_type': position.get('product_type') or 'Без типа',
-            'category': unparsed.get('category') or position.get('product_type') or 'Без категории',
+            # 'category': unparsed.get('category') or position.get('product_type') or 'Без категории',
+            'category': 'Без категории',
             'quantity': format_quantity(position.get('quantity')),
             'unit': unparsed.get('unit') or 'шт',
-            'requirements': position.get('additional_info') or 'Описание отсутствует',
+            'requirements': (
+                unparsed_description(unparsed_raw)
+                or position.get('additional_info')
+                or 'Описание отсутствует'
+            ),
             'components': normalize_components(components),
             'key_requirements': normalize_key_requirements(merged_requirements),
             'budget': format_money(position.get('max_price')),
@@ -376,6 +424,27 @@ def fetch_document_file(document_id):
         with conn.cursor() as cur:
             cur.execute(query, [document_id])
             return cur.fetchone()
+
+
+# description: function fetch_application_files. args: application_id. returns: list.
+def fetch_application_files(application_id):
+    query = f"""
+        SELECT
+            t.id AS tender_id,
+            t.tender_number,
+            d.id AS document_id,
+            d.document,
+            {document_metadata_select('d')}
+        FROM r_luxai.tenders t
+        JOIN r_luxai.documents d ON d.tender_id = t.id
+        WHERE t.id = %s
+        ORDER BY d.createdate ASC NULLS LAST, d.id ASC;
+    """
+
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(query, [application_id])
+            return cur.fetchall()
 
 
 # description: function fetch_application_file. args: application_id. returns: any.
@@ -485,17 +554,37 @@ def normalize_components(components):
 
     result = []
 
-    for component in components[:12]:
+    for component in components:
         if isinstance(component, dict):
-            result.append({
-                'group': component.get('group') or 'Комплектация',
-                'name': component.get('name') or '',
-            })
+            name = (
+                component.get('name')
+                or component.get('title')
+                or component.get('value')
+                or component.get('text')
+                or component.get('description')
+                or ''
+            )
+
+            group = component.get('group') or 'Комплектация'
         else:
-            result.append({
-                'group': 'Комплектация',
-                'name': str(component),
-            })
+            name = component
+            group = 'Комплектация'
+
+        name = str(name or '').strip()
+        group = str(group or '').strip() or 'Комплектация'
+
+        # Главное исправление:
+        # если компонент пустой, не добавляем его в result
+        if not name:
+            continue
+
+        result.append({
+            'group': group,
+            'name': name,
+        })
+
+        if len(result) >= 12:
+            break
 
     return result
 

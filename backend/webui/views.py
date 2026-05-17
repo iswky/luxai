@@ -18,10 +18,49 @@ from .db_repository import (
     fetch_available_cities,
     fetch_document_file,
     fetch_application_file,
+    fetch_application_files,
+    document_file_url,
 )
 
 
 SELECTED_SHOPS = {}
+
+OPENABLE_TENDER_EXTENSIONS = {'.pdf', '.doc', '.docx', '.xls', '.xlsx'}
+
+def _is_file_dump_text(value):
+    text = str(value or '').lower()
+
+    if not text:
+        return False
+
+    markers = (
+        'source_file=',
+        'pdf=',
+        '.pdf',
+        '.doc',
+        '.docx',
+        '.xls',
+        '.xlsx',
+    )
+
+    marker_count = sum(text.count(marker) for marker in markers)
+
+    return (
+        'source_file=' in text
+        or 'pdf=' in text
+        or marker_count >= 2
+    )
+
+
+def _replace_file_dump_summaries(application):
+    files_count = application.get('files_count') or len(application.get('files') or [])
+
+    if files_count <= 0:
+        return
+
+    for item in application.get('items') or []:
+        if _is_file_dump_text(item.get('requirements')):
+            item['requirements'] = f'Файлов тендера: {files_count}'
 
 
 # description: function get_application_or_404. args: application_id. returns: any.
@@ -31,6 +70,14 @@ def get_application_or_404(application_id):
     if application is None:
         raise Http404('Заявка не найдена')
 
+    application['files'] = _application_file_links(application)
+    application['files_count'] = len(application['files'])
+
+    _replace_file_dump_summaries(application)
+
+    if application['files']:
+        application['file'] = application['files'][0]['url']
+
     return application
 
 
@@ -39,7 +86,9 @@ def _documents_roots():
     candidates = [
         settings.TENDERS_FILES_DIR,
         settings.BASE_DIR / 'tenders_files',
+        settings.BASE_DIR / 'webui' / 'static' / 'webui' / 'files',
         settings.BASE_DIR.parent / 'parser' / 'tenders_files',
+        settings.BASE_DIR.parent / 'backend' / 'webui' / 'static' / 'webui' / 'files',
         settings.BASE_DIR.parent / 'tenders_files',
     ]
 
@@ -116,22 +165,88 @@ def _tender_folder_names(tender_number):
 
 
 # description: function _find_tender_file. args: tender_number. returns: any.
-def _find_tender_file(tender_number):
+def _is_openable_tender_file(path):
+    return (
+        path.is_file()
+        and path.suffix.lower() in OPENABLE_TENDER_EXTENSIONS
+        and not path.name.startswith('.')
+    )
+
+
+# description: function _find_tender_files. args: tender_number. returns: list.
+def _find_tender_files(tender_number):
+    result = []
+    seen = set()
+
     for root in _documents_roots():
         for folder_name in _tender_folder_names(tender_number):
+            for path in sorted(root.glob(f'{folder_name}*')):
+                if not _is_openable_tender_file(path):
+                    continue
+
+                resolved = path.resolve()
+                if resolved not in seen:
+                    result.append(resolved)
+                    seen.add(resolved)
+
             folder = root / folder_name
             if not folder.is_dir():
                 continue
 
-            pdf_files = sorted(folder.glob('*.pdf'))
-            if pdf_files:
-                return pdf_files[0]
+            for path in sorted(folder.iterdir()):
+                if not _is_openable_tender_file(path):
+                    continue
 
-            files = sorted(path for path in folder.iterdir() if path.is_file())
-            if files:
-                return files[0]
+                resolved = path.resolve()
+                if resolved not in seen:
+                    result.append(resolved)
+                    seen.add(resolved)
+
+    return result
+
+
+# description: function _find_tender_file. args: tender_number. returns: any.
+def _find_tender_file(tender_number):
+    files = _find_tender_files(tender_number)
+
+    if files:
+        return files[0]
 
     return None
+
+
+# description: function _application_file_links. args: application. returns: list.
+def _application_file_links(application):
+    links = []
+    seen_names = set()
+
+    for file_info in fetch_application_files(application['id']):
+        filename = (
+            file_info.get('filename')
+            or Path(str(file_info.get('document_path') or '')).name
+            or f"{application['number']}.pdf"
+        )
+
+        if filename.lower().endswith('.json'):
+            continue
+
+        links.append({
+            'name': filename,
+            'url': document_file_url(file_info['document_id']),
+        })
+        seen_names.add(filename)
+
+    for index, file_path in enumerate(_find_tender_files(application['number']), start=1):
+        if file_path.name in seen_names:
+            continue
+
+        links.append({
+            'name': file_path.name,
+            'url': f"/applications/{application['id']}/file/{index}/",
+        })
+        seen_names.add(file_path.name)
+
+    return links
 
 
 # description: function _file_response_from_path. args: file_path, filename. returns: any.
@@ -207,6 +322,21 @@ def open_document_file(request, file_id):
 # description: function open_application_file. args: request, application_id. returns: any.
 def open_application_file(request, application_id):
     return _open_tender_file(fetch_application_file(application_id))
+
+
+# description: function open_application_file_by_index. args: request, application_id, file_index. returns: any.
+def open_application_file_by_index(request, application_id, file_index):
+    file_info = fetch_application_file(application_id)
+
+    if not file_info:
+        raise Http404('Файл заявки не найден')
+
+    files = _find_tender_files(file_info.get('tender_number'))
+
+    if file_index < 1 or file_index > len(files):
+        raise Http404('Файл заявки не найден')
+
+    return _file_response_from_path(files[file_index - 1])
 
 
 # description: function update_prompt. args: request, file_id. returns: any.

@@ -38,6 +38,12 @@ urlpatterns = [
     ),
 
     path(
+        'applications/<int:application_id>/file/<int:file_index>/',
+        views.open_application_file_by_index,
+        name='open_application_file_by_index',
+    ),
+
+    path(
         'applications/<int:application_id>/select-shop/',
         views.select_shop,
         name='select_shop',
