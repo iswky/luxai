@@ -118,8 +118,8 @@ def check_keywords_in_file(file_path: str, keywords_pattern: re.Pattern = KEYWOR
         # excel
         elif ext in ['.xlsx', '.xls']:
             try:
+                from openpyxl import load_workbook
 
-                
                 # loading the workbook (.xlsx only, .xls is not supported by openpyxl)
                 wb = load_workbook(file_path, read_only=True, data_only=True)
                 
@@ -214,7 +214,14 @@ def find_files_with_keywords(
 from database.db import get_all_from_processing_queue, update_processing_queue_field
 
 # chews through all pdf files from the tender folder and stashes them in the database.if there are several pdfs in the folder, all their positions will be included in one tender (via upsert in save_tender_to_db).when restarted, old tender positions are deleted and written over again (see db.save_tender_to_db).
-def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: str = None, customer_name: str = None):
+def import_pdf_files_from_folder_to_database(
+    folder_path: str,
+    tender_number: str = None,
+    customer_name: str = None,
+    price=None,
+    end_date=None,
+    db_tender_number: str = None,
+):
     if not os.path.exists(folder_path):
         print(f"Folder {folder_path} not found")
         return
@@ -266,15 +273,19 @@ def import_pdf_files_from_folder_to_database(folder_path: str, tender_number: st
     merged = {"items": all_items}
     pdf_source = ", ".join(processed_pdfs) if processed_pdfs else None
 
+    db_tender_number = db_tender_number or tender_number
+
     db_id = save_tender_to_db(
-        tender_number=tender_number,
+        tender_number=db_tender_number,
         parsed_json=merged,
         pdf_source_file=pdf_source,
-        customer_name=customer_name
+        customer_name=customer_name,
+        price=price,
+        end_date=end_date,
     )
 
     if db_id is not None:
-        print(f"Tender {tender_number} → r_luxai.tenders.id={db_id}, positions: {len(all_items)}")
+        print(f"Tender {db_tender_number} → r_luxai.tenders.id={db_id}, positions: {len(all_items)}")
     else:
         print(f"Saving tender {tender_number} to DB failed")
 
@@ -438,14 +449,23 @@ def parse_single_tender_files(tender: dict):
     full_tender_num = tender['tender_number']
     number = full_tender_num[2:] if len(full_tender_num) > 2 else full_tender_num
     customer_name = tender['customer']
+    price = tender.get('price')
+    end_date = tender.get('end_date')
 
     folder_path: str = "backend/webui/static/webui/files"
     if not os.path.exists(folder_path) or not os.path.isdir(folder_path):
         print(f"{folder_path}: doesn`t exist such directory")
         return
 
-    # pass the full tender number and customer name to the database saving function
-    import_pdf_files_from_folder_to_database(folder_path, tender_number=str(number), customer_name=customer_name)
+    # tender_number is used to find renamed files; db_tender_number keeps the same number as processing_queue.
+    import_pdf_files_from_folder_to_database(
+        folder_path,
+        tender_number=str(number),
+        db_tender_number=full_tender_num,
+        customer_name=customer_name,
+        price=price,
+        end_date=end_date,
+    )
 
     tender['files_parsed'] = True
     update_processing_queue_field(full_tender_num, 'files_parsed', True)

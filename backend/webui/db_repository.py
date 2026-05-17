@@ -1,3 +1,5 @@
+import re
+
 from .db import get_connection
 
 from .cities import RUSSIAN_CITIES
@@ -84,6 +86,30 @@ def unparsed_description(value):
 
     if isinstance(value, str):
         return value
+
+    return ''
+
+
+def extract_position_source_file(value):
+    """Return the concrete source file for a tender position from additional_info."""
+    if not value:
+        return ''
+
+    text = str(value)
+
+    # Prefer the exact PDF marker because source_file can contain the whole list of tender files.
+    for key in ('pdf', 'source_pdf', '_source_pdf'):
+        match = re.search(rf'(?:^|;\s*){key}\s*=\s*([^;]+)', text, flags=re.IGNORECASE)
+        if match:
+            filename = match.group(1).strip()
+            return filename.replace('\\', '/').split('/')[-1]
+
+    match = re.search(r'(?:^|;\s*)source_file\s*=\s*([^;]+)', text, flags=re.IGNORECASE)
+    if match:
+        filename = match.group(1).strip()
+        # source_file may be a comma-separated list. Use the first one only as a fallback.
+        filename = filename.split(',')[0].strip()
+        return filename.replace('\\', '/').split('/')[-1]
 
     return ''
 
@@ -379,6 +405,7 @@ def fetch_application_detail(application_id):
         item = {
             'id': position['id'],
             'position_number': index,
+            'source_file': extract_position_source_file(position.get('additional_info')),
             'name': (
                 position.get('product_name')
                 or unparsed.get('name')

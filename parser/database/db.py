@@ -55,6 +55,8 @@ from typing import Any, Dict, List, Optional, Tuple
 import logging
 import re
 import os
+from datetime import date, datetime
+from decimal import Decimal, InvalidOperation
 
 import psycopg2
 from psycopg2.extras import Json
@@ -165,6 +167,103 @@ def _truncate(value: Optional[str], maxlen: int) -> Optional[str]:
     return s[:maxlen] if len(s) > maxlen else s
 
 
+def parse_price(value: Any) -> Optional[Decimal]:
+    """
+    Converts price from parser/processing_queue to Decimal for r_luxai.tenders.total_budget.
+
+    Supported examples:
+        123456
+        "123456"
+        "123 456,78"
+        "123 456.78 ₽"
+        "Не указана"
+    """
+    if value is None:
+        return None
+
+    if isinstance(value, Decimal):
+        return value
+
+    if isinstance(value, (int, float)):
+        try:
+            return Decimal(str(value))
+        except InvalidOperation:
+            return None
+
+    text = str(value).strip()
+    if not text or text.lower() in {"не указана", "не указан", "none", "null", "-"}:
+        return None
+
+    text = (
+        text.replace("\xa0", "")
+        .replace("₽", "")
+        .replace("руб.", "")
+        .replace("руб", "")
+        .replace(" ", "")
+        .replace(",", ".")
+        .strip()
+    )
+
+    # Keep only a numeric part if parser returned something like "1 000,00 RUB".
+    match = re.search(r"\d+(?:\.\d+)?", text)
+    if not match:
+        return None
+
+    try:
+        return Decimal(match.group(0))
+    except InvalidOperation:
+        return None
+
+
+def parse_end_date(value: Any):
+    """
+    Converts deadline from parser/processing_queue to datetime for r_luxai.tenders.closing_date.
+
+    Supported examples:
+        "18.05.2026"
+        "18.05.2026 10:30"
+        "18.05.2026 10:30:00"
+        "18.05.2026 10:30 (МСК)"
+        "2026-05-18"
+        "2026-05-18 10:30:00"
+    """
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        return value
+
+    if isinstance(value, date):
+        return datetime.combine(value, datetime.min.time())
+
+    text = str(value).strip()
+    if not text or text.lower() in {"не указана", "не указан", "none", "null", "-"}:
+        return None
+
+    # Cut extra timezone/comment text and leave only date with optional time.
+    match = re.search(r"\d{2}\.\d{2}\.\d{4}(?:\s+\d{2}:\d{2}(?::\d{2})?)?", text)
+    if not match:
+        match = re.search(r"\d{4}-\d{2}-\d{2}(?:\s+\d{2}:\d{2}(?::\d{2})?)?", text)
+
+    if match:
+        text = match.group(0)
+
+    for fmt in (
+        "%d.%m.%Y %H:%M:%S",
+        "%d.%m.%Y %H:%M",
+        "%d.%m.%Y",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d %H:%M",
+        "%Y-%m-%d",
+    ):
+        try:
+            return datetime.strptime(text, fmt)
+        except ValueError:
+            pass
+
+    return None
+
+
 # ─────────────────────── public funcs───────────────────────
 
 '''
@@ -178,6 +277,8 @@ def save_tender_to_db(
     pdf_source_file: Optional[str] = None,
     customer_name: Optional[str] = None,
     prompt: Optional[str] = None,
+    price: Any = None,
+    end_date: Any = None,
 ) -> Optional[int]:
     items: List[Dict[str, Any]] = parsed_json.get("items", []) or []
 
@@ -188,17 +289,31 @@ def save_tender_to_db(
                 cur.execute(
                     """
                     INSERT INTO r_luxai.tenders (
-                        tender_number, customer_name, status, prompt
+                        tender_number,
+                        customer_name,
+                        closing_date,
+                        total_budget,
+                        status,
+                        prompt
                     ) VALUES (
-                        %s, %s, %s, %s
+                        %s, %s, %s, %s, %s, %s
                     )
                     ON CONFLICT (tender_number) DO UPDATE SET
                         customer_name = COALESCE(EXCLUDED.customer_name, r_luxai.tenders.customer_name),
+                        closing_date = COALESCE(EXCLUDED.closing_date, r_luxai.tenders.closing_date),
+                        total_budget = COALESCE(EXCLUDED.total_budget, r_luxai.tenders.total_budget),
                         prompt = COALESCE(EXCLUDED.prompt, r_luxai.tenders.prompt),
                         updatedate = NOW()
                     RETURNING id;
                     """,
-                    [tender_number, customer_name, "parsed", prompt],
+                    [
+                        tender_number,
+                        customer_name,
+                        parse_end_date(end_date),
+                        parse_price(price),
+                        "parsed",
+                        prompt,
+                    ],
                 )
                 tender_id = cur.fetchone()[0]
 
@@ -443,14 +558,7 @@ def add_to_processing_queue(tenders: dict) -> int:
             with conn.cursor() as cur:
                 for number, info in tenders.items():
                     price_raw = info.get('price', 'Не указана')
-                    price_number = None
-                    if price_raw != 'Не указана':
-                        # Убираем пробелы и преобразуем в число
-                        price_cleaned = price_raw.replace(' ', '')
-                        try:
-                            price_number = int(price_cleaned)
-                        except ValueError:
-                            price_number = None
+                    price_number = parse_price(price_raw)
                     cur.execute(
                         """
                         INSERT INTO r_luxai.processing_queue (
@@ -463,7 +571,7 @@ def add_to_processing_queue(tenders: dict) -> int:
                             number,
                             info.get('name', 'Не указано'),
                             info.get('url'),
-                            price_number,
+                            str(price_number) if price_number is not None else None,
                             info.get('law', 'Не указан'),
                             info.get('end_date', 'Не указана'),
                             info.get('customer', 'Не указан'),

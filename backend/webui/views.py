@@ -53,14 +53,17 @@ def _is_file_dump_text(value):
 
 
 def _replace_file_dump_summaries(application):
-    files_count = application.get('files_count') or len(application.get('files') or [])
-
-    if files_count <= 0:
-        return
-
+    """Заменяет технический дамп файлов на понятную привязку позиции к конкретному файлу."""
     for item in application.get('items') or []:
-        if _is_file_dump_text(item.get('requirements')):
-            item['requirements'] = f'Файлов тендера: {files_count}'
+        if not _is_file_dump_text(item.get('requirements')):
+            continue
+
+        source_file = item.get('source_file')
+
+        if source_file:
+            item['requirements'] = f'Файл позиции: {source_file}'
+        else:
+            item['requirements'] = f'Позиция №{item.get("position_number") or "-"}'
 
 
 # description: function get_application_or_404. args: application_id. returns: any.
