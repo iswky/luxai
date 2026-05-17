@@ -442,6 +442,15 @@ def add_to_processing_queue(tenders: dict) -> int:
         with psycopg2.connect(**DB_CONFIG) as conn:
             with conn.cursor() as cur:
                 for number, info in tenders.items():
+                    price_raw = info.get('price', 'Не указана')
+                    price_number = None
+                    if price_raw != 'Не указана':
+                        # Убираем пробелы и преобразуем в число
+                        price_cleaned = price_raw.replace(' ', '')
+                        try:
+                            price_number = int(price_cleaned)
+                        except ValueError:
+                            price_number = None
                     cur.execute(
                         """
                         INSERT INTO r_luxai.processing_queue (
@@ -454,7 +463,7 @@ def add_to_processing_queue(tenders: dict) -> int:
                             number,
                             info.get('name', 'Не указано'),
                             info.get('url'),
-                            info.get('price', 'Не указана'),
+                            price_number,
                             info.get('law', 'Не указан'),
                             info.get('end_date', 'Не указана'),
                             info.get('customer', 'Не указан'),
