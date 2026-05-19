@@ -1,6 +1,6 @@
 from scraper.zakupki_scraper import Parse_gos_zakupki
 from scraper.city_scraper import city_parse, tender_city_parse
-from processor.downloader import download_tenders_files, download_1tender_files
+from processor.downloader import download_tenders_files, download_1tender_files, unarchive_file
 from processor.file_filter import file_filter, file_parser, filter_single_tender_files, parse_single_tender_files
 from processor.validator import tender_validator
 from database.db import deduplicate_tenders_in_db, get_all_from_processing_queue
@@ -49,5 +49,12 @@ def main():
 if __name__ == "__main__":
     # Parse_gos_zakupki(interactive=True)
 
+    # tenders = get_all_from_processing_queue()
+
+    # for tender in tenders:
+    #     print(tender)
+    #     print("\n\n\n")
+
+    # unarchive_file("tenders_files/A.zip")
 
     main()
